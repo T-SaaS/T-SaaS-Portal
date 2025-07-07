@@ -993,7 +993,11 @@ export default function DriverForm() {
                             <Button
                               type="button"
                               className="mt-2 bg-amber-600 hover:bg-amber-700"
-                              onClick={() => onSubmit(form.getValues())}
+                              onClick={() => {
+                                setGapDetected(false);
+                                setCurrentStep(5); // Move to background check step
+                                form.clearErrors();
+                              }}
                             >
                               I Was Unemployed During These Periods
                             </Button>
@@ -1272,6 +1276,7 @@ export default function DriverForm() {
                         type="button"
                         onClick={onNext}
                         className="bg-blue-500 hover:bg-blue-600"
+                        disabled={currentStep === 4 && gapDetected}
                       >
                         Next
                         <ChevronRight className="h-4 w-4 ml-2" />

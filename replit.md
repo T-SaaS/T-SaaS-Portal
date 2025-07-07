@@ -30,7 +30,14 @@ This is a full-stack web application for managing driver applications. The syste
   - License information (number, state, position applied for)
   - Address history (JSON array with date ranges) - conditional based on residency
   - Employment history (JSON array with date ranges)
+  - Background check information (SSN, consent, status, results)
   - Submission timestamp
+
+### Background Check Integration
+- **Automated Processing**: Background checks initiate automatically after form submission
+- **Status Tracking**: Real-time status updates (pending, in_progress, completed, failed)
+- **Comprehensive Results**: Criminal history, driving record, employment verification, drug testing
+- **Service Architecture**: Dedicated background check service with mock API integration
 
 ### API Endpoints
 - `POST /api/driver-applications` - Submit new driver application
@@ -38,11 +45,12 @@ This is a full-stack web application for managing driver applications. The syste
 - `GET /api/driver-applications/:id` - Retrieve specific application
 
 ### Frontend Components
-- **Multi-step Form**: Progressive form with 5 steps and intelligent navigation
+- **Multi-step Form**: Progressive form with 6 steps and intelligent navigation
 - **Current Address Collection**: Integrated into contact information step
 - **Smart Address History**: Conditional step based on 3-year residency requirement
 - **Residency Gap Detection**: Validates 3-year address history completeness
-- **Employment Gap Detection**: Validates 36-month employment history
+- **Employment Gap Detection**: Validates 36-month employment history with gap acknowledgment
+- **Background Check Integration**: SSN collection with auto-formatting and comprehensive consent
 - **Dynamic Field Arrays**: Address and employment history management
 - **Progress Tracking**: Visual progress indicator with conditional steps
 - **Form Validation**: Real-time validation with error messages
@@ -102,6 +110,10 @@ Changelog:
 - July 07, 2025. Implemented smart residency gap detection (3-year requirement)
 - July 07, 2025. Added conditional address history step based on residency duration
 - July 07, 2025. Integrated PostgreSQL database with Drizzle ORM
+- July 07, 2025. Added comprehensive background check integration (Step 6)
+- July 07, 2025. Added SSN collection with auto-formatting and consent forms
+- July 07, 2025. Built background check service with automatic processing
+- July 07, 2025. Fixed employment gap handling to allow submission with gaps
 ```
 
 ## User Preferences
