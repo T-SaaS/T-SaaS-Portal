@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertDriverApplicationSchema } from "@shared/schema";
+import { backgroundCheckService } from "./backgroundCheckService";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -10,6 +11,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertDriverApplicationSchema.parse(req.body);
       const application = await storage.createDriverApplication(validatedData);
+      
+      // Initiate background check process
+      if (application.consentToBackgroundCheck === 1) {
+        backgroundCheckService.initiateBackgroundCheck(application.id);
+      }
+      
       res.status(201).json(application);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -51,6 +58,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(application);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Internal server error" 
+      });
+    }
+  });
+
+  // Get background check status
+  app.get("/api/driver-applications/:id/background-check", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const status = await backgroundCheckService.getBackgroundCheckStatus(id);
+      
+      if (!status) {
+        res.status(404).json({ 
+          message: "Application not found" 
+        });
+        return;
+      }
+      
+      res.json(status);
     } catch (error) {
       res.status(500).json({ 
         message: "Internal server error" 
