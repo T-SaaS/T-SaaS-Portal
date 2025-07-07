@@ -26,6 +26,12 @@ const stepSchemas = [
   Yup.object().shape({
     phone: Yup.string().required("Phone number is required"),
     email: Yup.string().email("Invalid email format").required("Email is required"),
+    currentAddress: Yup.string().required("Current Address is required"),
+    currentCity: Yup.string().required("Current City is required"),
+    currentState: Yup.string().required("Current State is required"),
+    currentZip: Yup.string().required("Current ZIP code is required"),
+    currentAddressFromMonth: Yup.number().min(1).max(12).required("Move-in Month is required"),
+    currentAddressFromYear: Yup.number().min(1900).required("Move-in Year is required"),
   }),
   Yup.object().shape({
     licenseNumber: Yup.string().required("License Number is required"),
@@ -44,7 +50,7 @@ const stepSchemas = [
         toMonth: Yup.number().min(1).max(12).required("To Month is required"),
         toYear: Yup.number().min(1900).required("To Year is required"),
       })
-    ).min(1, "At least one address is required"),
+    ),
   }),
   Yup.object().shape({
     jobs: Yup.array().of(
@@ -60,8 +66,8 @@ const stepSchemas = [
   })
 ];
 
-const stepTitles = ["Personal Information", "Contact Information", "License Information", "Address History", "Employment History"];
-const stepLabels = ["Personal Info", "Contact Info", "License Info", "Address History", "Employment"];
+const stepTitles = ["Personal Information", "Contact & Address", "License Information", "Address History", "Employment History"];
+const stepLabels = ["Personal Info", "Contact & Address", "License Info", "Address History", "Employment"];
 
 const months = [
   { value: 1, label: "January" },
@@ -142,6 +148,9 @@ export default function DriverForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [gapDetected, setGapDetected] = useState(false);
   const [unemploymentPeriods, setUnemploymentPeriods] = useState<Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>>([]);
+  const [residencyGapDetected, setResidencyGapDetected] = useState(false);
+  const [residencyPeriods, setResidencyPeriods] = useState<Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>>([]);
+  const [needsAdditionalAddresses, setNeedsAdditionalAddresses] = useState(false);
   const { toast } = useToast();
 
   const form = useForm({
@@ -152,6 +161,12 @@ export default function DriverForm() {
       dob: "",
       phone: "",
       email: "",
+      currentAddress: "",
+      currentCity: "",
+      currentState: "",
+      currentZip: "",
+      currentAddressFromMonth: new Date().getMonth() + 1,
+      currentAddressFromYear: new Date().getFullYear(),
       licenseNumber: "",
       licenseState: "",
       positionAppliedFor: "",
@@ -198,13 +213,82 @@ export default function DriverForm() {
   const onNext = async () => {
     const valid = await form.trigger();
     if (valid) {
-      if (currentStep === 4) {
+      if (currentStep === 1) {
+        checkResidencyRequirements();
+      } else if (currentStep === 3 && needsAdditionalAddresses) {
+        checkForResidencyGaps();
+      } else if (currentStep === 3 && !needsAdditionalAddresses) {
+        // Skip to employment history
+        setCurrentStep(4);
+        form.clearErrors();
+      } else if (currentStep === 4) {
         checkForEmploymentGaps();
       } else {
         setCurrentStep((prev) => prev + 1);
         // Update form resolver for next step
         form.clearErrors();
       }
+    }
+  };
+
+  const checkResidencyRequirements = () => {
+    const currentAddressFrom = dayjs(`${form.watch('currentAddressFromYear')}-${form.watch('currentAddressFromMonth')}-01`);
+    const threeYearsAgo = dayjs().subtract(3, 'year');
+    
+    if (currentAddressFrom.isAfter(threeYearsAgo)) {
+      setNeedsAdditionalAddresses(true);
+    } else {
+      setNeedsAdditionalAddresses(false);
+      // Skip address history step if not needed
+      setCurrentStep(3);
+      form.clearErrors();
+      return;
+    }
+    
+    setCurrentStep((prev) => prev + 1);
+    form.clearErrors();
+  };
+
+  const checkForResidencyGaps = () => {
+    const currentAddressFrom = dayjs(`${form.watch('currentAddressFromYear')}-${form.watch('currentAddressFromMonth')}-01`);
+    const addresses = form.watch("addresses").sort((a, b) => {
+      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf('month');
+      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf('month');
+      return bDate.diff(aDate);
+    });
+
+    let gaps: Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }> = [];
+    let lastToDate = currentAddressFrom;
+    const threeYearsAgo = dayjs().subtract(3, 'year');
+
+    addresses.forEach((address) => {
+      const addressTo = dayjs(`${address.toYear}-${address.toMonth}-01`).endOf('month');
+      const addressFrom = dayjs(`${address.fromYear}-${address.fromMonth}-01`).startOf('month');
+
+      if (lastToDate.diff(addressTo, 'month') > 1) {
+        gaps.push({
+          from: addressTo.add(1, 'month'),
+          to: lastToDate.subtract(1, 'month')
+        });
+      }
+      lastToDate = addressFrom;
+    });
+
+    // Check if we have covered the full 3 years
+    if (lastToDate.isAfter(threeYearsAgo)) {
+      gaps.push({
+        from: threeYearsAgo,
+        to: lastToDate.subtract(1, 'month')
+      });
+    }
+
+    if (gaps.length > 0) {
+      setResidencyGapDetected(true);
+      setResidencyPeriods(gaps);
+    } else {
+      setResidencyGapDetected(false);
+      setCurrentStep((prev) => prev + 1);
+      form.clearErrors();
     }
   };
 
@@ -254,13 +338,20 @@ export default function DriverForm() {
   };
 
   const onBack = () => {
-    setCurrentStep((prev) => prev - 1);
+    if (currentStep === 4 && !needsAdditionalAddresses) {
+      // Skip back to license info (step 2) if address history was skipped
+      setCurrentStep(2);
+    } else {
+      setCurrentStep((prev) => prev - 1);
+    }
     form.clearErrors();
   };
 
   const onSubmit = (data: any) => {
     const formattedData: InsertDriverApplication = {
       ...data,
+      currentAddressFromMonth: Number(data.currentAddressFromMonth),
+      currentAddressFromYear: Number(data.currentAddressFromYear),
       addresses: data.addresses.map((addr: any) => ({
         ...addr,
         fromMonth: Number(addr.fromMonth),
@@ -383,36 +474,156 @@ export default function DriverForm() {
                   </div>
                 )}
 
-                {/* Step 2: Contact Information */}
+                {/* Step 2: Contact Information & Current Address */}
                 {currentStep === 1 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input placeholder="(555) 123-4567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="john.smith@email.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="(555) 123-4567" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="john.smith@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Current Address</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="currentAddress"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>Street Address <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Input placeholder="123 Main Street" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentCity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>City <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Input placeholder="City" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentState"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>State <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select state" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {states.map((state) => (
+                                      <SelectItem key={state.value} value={state.value}>
+                                        {state.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentZip"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>ZIP Code <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Input placeholder="12345" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentAddressFromMonth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Month Moved In <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select month" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {months.map((month) => (
+                                      <SelectItem key={month.value} value={month.value.toString()}>
+                                        {month.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentAddressFromYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Year Moved In <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  placeholder="2024" 
+                                  min="1900"
+                                  max={new Date().getFullYear()}
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -486,8 +697,21 @@ export default function DriverForm() {
                 )}
 
                 {/* Step 4: Address History */}
-                {currentStep === 3 && (
+                {currentStep === 3 && needsAdditionalAddresses && (
                   <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-800">Address History Required</h4>
+                          <p className="text-blue-700 text-sm mt-1">
+                            Since you've lived at your current address for less than 3 years, please provide your previous addresses to complete your 3-year residency history.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium text-slate-900">Address History</h3>
                       <Button
@@ -678,6 +902,41 @@ export default function DriverForm() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Address History Skipped Message */}
+                {currentStep === 3 && !needsAdditionalAddresses && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <div className="flex items-start space-x-3">
+                      <CheckCircle className="text-green-500 mt-1 h-5 w-5" />
+                      <div>
+                        <h4 className="font-medium text-green-800">Address History Complete</h4>
+                        <p className="text-green-700 text-sm mt-1">
+                          Since you've lived at your current address for 3 years or more, no additional address history is needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Residency Gap Detection Warning */}
+                {currentStep === 3 && residencyGapDetected && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="text-amber-500 mt-1 h-5 w-5" />
+                      <div>
+                        <h4 className="font-medium text-amber-800">Residency Gap Detected</h4>
+                        <p className="text-amber-700 text-sm mt-1">
+                          We detected gaps in your 3-year residency history. Please add additional addresses to cover these periods.
+                        </p>
+                        {residencyPeriods.map((gap, idx) => (
+                          <p key={idx} className="text-amber-700 text-sm">
+                            Gap between {gap.from.format('MM/YYYY')} and {gap.to.format('MM/YYYY')}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 

@@ -9,6 +9,12 @@ export const driverApplications = pgTable("driver_applications", {
   dob: text("dob").notNull(),
   phone: text("phone").notNull(),
   email: text("email").notNull(),
+  currentAddress: text("current_address").notNull(),
+  currentCity: text("current_city").notNull(),
+  currentState: text("current_state").notNull(),
+  currentZip: text("current_zip").notNull(),
+  currentAddressFromMonth: integer("current_address_from_month").notNull(),
+  currentAddressFromYear: integer("current_address_from_year").notNull(),
   licenseNumber: text("license_number").notNull(),
   licenseState: text("license_state").notNull(),
   positionAppliedFor: text("position_applied_for").notNull(),
@@ -41,7 +47,7 @@ export const insertDriverApplicationSchema = createInsertSchema(driverApplicatio
   id: true,
   submittedAt: true,
 }).extend({
-  addresses: z.array(addressSchema).min(1, "At least one address is required"),
+  addresses: z.array(addressSchema),
   jobs: z.array(jobSchema).min(1, "At least one job is required"),
 });
 
