@@ -63,11 +63,19 @@ const stepSchemas = [
         toYear: Yup.number().min(1900).required("To Year is required"),
       })
     ).min(1, "At least one job is required"),
+  }),
+  Yup.object().shape({
+    socialSecurityNumber: Yup.string()
+      .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
+      .required("Social Security Number is required"),
+    consentToBackgroundCheck: Yup.number()
+      .min(1, "You must consent to background check to proceed")
+      .required("Background check consent is required"),
   })
 ];
 
-const stepTitles = ["Personal Information", "Contact & Address", "License Information", "Address History", "Employment History"];
-const stepLabels = ["Personal Info", "Contact & Address", "License Info", "Address History", "Employment"];
+const stepTitles = ["Personal Information", "Contact & Address", "License Information", "Address History", "Employment History", "Background Check"];
+const stepLabels = ["Personal Info", "Contact & Address", "License Info", "Address History", "Employment", "Background Check"];
 
 const months = [
   { value: 1, label: "January" },
@@ -171,7 +179,9 @@ export default function DriverForm() {
       licenseState: "",
       positionAppliedFor: "",
       addresses: [],
-      jobs: []
+      jobs: [],
+      socialSecurityNumber: "",
+      consentToBackgroundCheck: 0
     },
     mode: "onTouched"
   });
@@ -223,6 +233,9 @@ export default function DriverForm() {
         form.clearErrors();
       } else if (currentStep === 4) {
         checkForEmploymentGaps();
+      } else if (currentStep === 5) {
+        // Final step - submit the form
+        onSubmit(form.getValues());
       } else {
         setCurrentStep((prev) => prev + 1);
         // Update form resolver for next step
@@ -352,6 +365,7 @@ export default function DriverForm() {
       ...data,
       currentAddressFromMonth: Number(data.currentAddressFromMonth),
       currentAddressFromYear: Number(data.currentAddressFromYear),
+      consentToBackgroundCheck: Number(data.consentToBackgroundCheck),
       addresses: data.addresses.map((addr: any) => ({
         ...addr,
         fromMonth: Number(addr.fromMonth),
@@ -1118,6 +1132,120 @@ export default function DriverForm() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Step 6: Background Check */}
+                {currentStep === 5 && (
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-800">Background Check Authorization</h4>
+                          <p className="text-blue-700 text-sm mt-1">
+                            To complete your driver application, we need to perform a comprehensive background check including criminal history, driving record, and employment verification.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="socialSecurityNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Social Security Number <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="123-45-6789" 
+                                {...field}
+                                onChange={(e) => {
+                                  // Auto-format SSN with dashes
+                                  let value = e.target.value.replace(/\D/g, '');
+                                  if (value.length >= 6) {
+                                    value = value.replace(/(\d{3})(\d{2})(\d{4})/, '$1-$2-$3');
+                                  } else if (value.length >= 4) {
+                                    value = value.replace(/(\d{3})(\d{2})/, '$1-$2');
+                                  }
+                                  field.onChange(value);
+                                }}
+                                maxLength={11}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="bg-amber-100 p-1 rounded-full">
+                            <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-amber-800 mb-2">Background Check Details</h4>
+                            <div className="text-amber-700 text-sm space-y-1">
+                              <p>• <strong>Criminal History Check:</strong> National and local criminal records</p>
+                              <p>• <strong>Driving Record:</strong> MVR check for violations, suspensions, and accidents</p>
+                              <p>• <strong>Employment Verification:</strong> Confirmation of previous employment history</p>
+                              <p>• <strong>Drug Screening:</strong> DOT-compliant drug testing (scheduled separately)</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="consentToBackgroundCheck"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="border border-slate-200 rounded-lg p-6 bg-slate-50">
+                              <div className="flex items-start space-x-3">
+                                <FormControl>
+                                  <input
+                                    type="checkbox"
+                                    checked={field.value === 1}
+                                    onChange={(e) => field.onChange(e.target.checked ? 1 : 0)}
+                                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                  />
+                                </FormControl>
+                                <div className="flex-1">
+                                  <FormLabel className="text-sm font-medium text-slate-900">
+                                    Background Check Consent <span className="text-red-500">*</span>
+                                  </FormLabel>
+                                  <p className="text-sm text-slate-600 mt-1">
+                                    I hereby authorize the company to conduct a comprehensive background check including but not limited to: 
+                                    criminal history, driving record, employment verification, and drug screening. I understand that this 
+                                    information will be used to determine my eligibility for employment as a driver. I certify that all 
+                                    information provided is true and accurate to the best of my knowledge.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="bg-green-100 p-1 rounded-full">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-green-800">Next Steps</h4>
+                            <p className="text-green-700 text-sm mt-1">
+                              After submitting your application, we'll initiate the background check process. 
+                              You'll receive updates via email and can track the status in your applicant portal.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

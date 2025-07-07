@@ -20,6 +20,12 @@ export const driverApplications = pgTable("driver_applications", {
   positionAppliedFor: text("position_applied_for").notNull(),
   addresses: jsonb("addresses").notNull(),
   jobs: jsonb("jobs").notNull(),
+  // Background check fields
+  socialSecurityNumber: text("social_security_number").default("000-00-0000").notNull(),
+  consentToBackgroundCheck: integer("consent_to_background_check").default(0).notNull(), // 1 for true, 0 for false
+  backgroundCheckStatus: text("background_check_status").default("pending"), // pending, in_progress, completed, failed
+  backgroundCheckResults: jsonb("background_check_results"),
+  backgroundCheckCompletedAt: timestamp("background_check_completed_at"),
   submittedAt: timestamp("submitted_at").defaultNow(),
 });
 
@@ -43,15 +49,45 @@ export const jobSchema = z.object({
   toYear: z.number().min(1900),
 });
 
+export const backgroundCheckResultSchema = z.object({
+  criminalHistory: z.boolean(),
+  drivingRecord: z.object({
+    violations: z.array(z.object({
+      type: z.string(),
+      date: z.string(),
+      severity: z.enum(["minor", "major", "serious"]),
+    })),
+    suspensions: z.array(z.object({
+      reason: z.string(),
+      startDate: z.string(),
+      endDate: z.string(),
+    })),
+    overallScore: z.enum(["excellent", "good", "fair", "poor"]),
+  }),
+  employmentVerification: z.object({
+    verified: z.boolean(),
+    discrepancies: z.array(z.string()),
+  }),
+  drugTest: z.object({
+    status: z.enum(["passed", "failed", "pending"]),
+    completedAt: z.string().optional(),
+  }),
+});
+
 export const insertDriverApplicationSchema = createInsertSchema(driverApplications).omit({
   id: true,
   submittedAt: true,
+  backgroundCheckStatus: true,
+  backgroundCheckResults: true,
+  backgroundCheckCompletedAt: true,
 }).extend({
   addresses: z.array(addressSchema),
   jobs: z.array(jobSchema).min(1, "At least one job is required"),
+  consentToBackgroundCheck: z.number().min(1, "Background check consent is required"),
 });
 
 export type InsertDriverApplication = z.infer<typeof insertDriverApplicationSchema>;
 export type DriverApplication = typeof driverApplications.$inferSelect;
 export type Address = z.infer<typeof addressSchema>;
 export type Job = z.infer<typeof jobSchema>;
+export type BackgroundCheckResult = z.infer<typeof backgroundCheckResultSchema>;
