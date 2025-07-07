@@ -19,15 +19,16 @@ This is a full-stack web application for managing driver applications. The syste
 - **Language**: TypeScript with ES modules
 - **Database**: PostgreSQL with Drizzle ORM
 - **Database Provider**: Neon Database (@neondatabase/serverless)
-- **Storage**: In-memory storage for development, PostgreSQL for production
+- **Storage**: PostgreSQL database with DatabaseStorage implementation
 
 ## Key Components
 
 ### Database Schema
 - **Driver Applications Table**: Stores comprehensive driver application data
   - Personal information (name, DOB, contact details)
+  - Current address information with move-in date
   - License information (number, state, position applied for)
-  - Address history (JSON array with date ranges)
+  - Address history (JSON array with date ranges) - conditional based on residency
   - Employment history (JSON array with date ranges)
   - Submission timestamp
 
@@ -37,9 +38,13 @@ This is a full-stack web application for managing driver applications. The syste
 - `GET /api/driver-applications/:id` - Retrieve specific application
 
 ### Frontend Components
-- **Multi-step Form**: Progressive form with 5 steps and validation
+- **Multi-step Form**: Progressive form with 5 steps and intelligent navigation
+- **Current Address Collection**: Integrated into contact information step
+- **Smart Address History**: Conditional step based on 3-year residency requirement
+- **Residency Gap Detection**: Validates 3-year address history completeness
+- **Employment Gap Detection**: Validates 36-month employment history
 - **Dynamic Field Arrays**: Address and employment history management
-- **Progress Tracking**: Visual progress indicator
+- **Progress Tracking**: Visual progress indicator with conditional steps
 - **Form Validation**: Real-time validation with error messages
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 
@@ -75,7 +80,7 @@ This is a full-stack web application for managing driver applications. The syste
 ### Development
 - Vite dev server for frontend with hot module replacement
 - tsx for running TypeScript server with auto-reload
-- In-memory storage for rapid development iteration
+- PostgreSQL database for persistent data storage
 
 ### Production
 - Frontend built and served as static files
@@ -93,6 +98,10 @@ This is a full-stack web application for managing driver applications. The syste
 ```
 Changelog:
 - July 07, 2025. Initial setup
+- July 07, 2025. Added current address collection at stage 2 with move-in date
+- July 07, 2025. Implemented smart residency gap detection (3-year requirement)
+- July 07, 2025. Added conditional address history step based on residency duration
+- July 07, 2025. Integrated PostgreSQL database with Drizzle ORM
 ```
 
 ## User Preferences

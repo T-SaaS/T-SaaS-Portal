@@ -1,4 +1,6 @@
 import { driverApplications, type DriverApplication, type InsertDriverApplication } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   createDriverApplication(application: InsertDriverApplication): Promise<DriverApplication>;
@@ -6,33 +8,26 @@ export interface IStorage {
   getAllDriverApplications(): Promise<DriverApplication[]>;
 }
 
-export class MemStorage implements IStorage {
-  private applications: Map<number, DriverApplication>;
-  private currentId: number;
-
-  constructor() {
-    this.applications = new Map();
-    this.currentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async createDriverApplication(insertApplication: InsertDriverApplication): Promise<DriverApplication> {
-    const id = this.currentId++;
-    const application: DriverApplication = {
-      ...insertApplication,
-      id,
-      submittedAt: new Date(),
-    };
-    this.applications.set(id, application);
+    const [application] = await db
+      .insert(driverApplications)
+      .values(insertApplication)
+      .returning();
     return application;
   }
 
   async getDriverApplication(id: number): Promise<DriverApplication | undefined> {
-    return this.applications.get(id);
+    const [application] = await db
+      .select()
+      .from(driverApplications)
+      .where(eq(driverApplications.id, id));
+    return application || undefined;
   }
 
   async getAllDriverApplications(): Promise<DriverApplication[]> {
-    return Array.from(this.applications.values());
+    return await db.select().from(driverApplications);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
