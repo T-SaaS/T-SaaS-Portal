@@ -1,0 +1,102 @@
+# Driver Application System
+
+## Overview
+
+This is a full-stack web application for managing driver applications. The system features a modern React frontend with a multi-step form for driver applications and an Express.js backend with RESTful API endpoints. The application uses a PostgreSQL database via Drizzle ORM for data persistence, with shadcn/ui components for a polished user interface.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui component library
+- **Form Management**: React Hook Form with Yup validation
+- **State Management**: TanStack React Query for server state
+- **Routing**: Wouter for client-side routing
+- **Build Tool**: Vite for development and production builds
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript with ES modules
+- **Database**: PostgreSQL with Drizzle ORM
+- **Database Provider**: Neon Database (@neondatabase/serverless)
+- **Storage**: In-memory storage for development, PostgreSQL for production
+
+## Key Components
+
+### Database Schema
+- **Driver Applications Table**: Stores comprehensive driver application data
+  - Personal information (name, DOB, contact details)
+  - License information (number, state, position applied for)
+  - Address history (JSON array with date ranges)
+  - Employment history (JSON array with date ranges)
+  - Submission timestamp
+
+### API Endpoints
+- `POST /api/driver-applications` - Submit new driver application
+- `GET /api/driver-applications` - Retrieve all applications
+- `GET /api/driver-applications/:id` - Retrieve specific application
+
+### Frontend Components
+- **Multi-step Form**: Progressive form with 5 steps and validation
+- **Dynamic Field Arrays**: Address and employment history management
+- **Progress Tracking**: Visual progress indicator
+- **Form Validation**: Real-time validation with error messages
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+
+## Data Flow
+
+1. User fills out multi-step driver application form
+2. Form data is validated at each step using Yup schemas
+3. Complete form submission triggers API call to backend
+4. Backend validates data using Drizzle-Zod schemas
+5. Data is stored in PostgreSQL database
+6. Success/error response is returned to frontend
+7. User receives confirmation or error feedback
+
+## External Dependencies
+
+### Database
+- **Neon Database**: Serverless PostgreSQL provider
+- **Drizzle ORM**: Type-safe database operations
+- **Drizzle Kit**: Database migration and schema management
+
+### UI Components
+- **shadcn/ui**: Complete component library built on Radix UI
+- **Radix UI**: Accessible, unstyled UI primitives
+- **Tailwind CSS**: Utility-first CSS framework
+
+### Development Tools
+- **Vite**: Fast build tool and development server
+- **TypeScript**: Type safety and enhanced developer experience
+- **ESLint/Prettier**: Code quality and formatting
+
+## Deployment Strategy
+
+### Development
+- Vite dev server for frontend with hot module replacement
+- tsx for running TypeScript server with auto-reload
+- In-memory storage for rapid development iteration
+
+### Production
+- Frontend built and served as static files
+- Backend bundled with esbuild for optimal performance
+- PostgreSQL database for persistent data storage
+- Environment-based configuration for database connections
+
+### Build Process
+1. Frontend: `vite build` - Creates optimized static assets
+2. Backend: `esbuild` - Bundles server code for production
+3. Database: `drizzle-kit push` - Applies schema migrations
+
+## Changelog
+
+```
+Changelog:
+- July 07, 2025. Initial setup
+```
+
+## User Preferences
+
+```
+Preferred communication style: Simple, everyday language.
+```
