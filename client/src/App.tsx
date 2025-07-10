@@ -1,27 +1,18 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { ApolloProvider } from "@apollo/client";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import DriverForm from "@/pages/driver-form";
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={DriverForm} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import { client } from "./lib/graphql";
+import { queryClient } from "./lib/queryClient";
+import DriverForm from "./pages/driver-form";
+import "./index.css";
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ApolloProvider client={client}>
+        <div className="min-h-screen bg-gray-50">
+          <DriverForm />
+        </div>
+      </ApolloProvider>
     </QueryClientProvider>
   );
 }
