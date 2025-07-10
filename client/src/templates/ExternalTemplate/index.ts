@@ -1,0 +1,1 @@
+export { ExternalTemplate } from "./ExternalTemplate";
