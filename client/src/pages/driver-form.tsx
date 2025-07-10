@@ -1,21 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
 import dayjs from "dayjs";
 import { useMutation } from "@tanstack/react-query";
-import { IdCard, ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  IdCard,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { InsertDriverApplication } from "@shared/schema";
+import { months, states, positions } from "@shared/utilities/globalConsts";
+import { loadTestData } from "@/utils/testData";
 
 const stepSchemas = [
   Yup.object().shape({
@@ -25,13 +48,20 @@ const stepSchemas = [
   }),
   Yup.object().shape({
     phone: Yup.string().required("Phone number is required"),
-    email: Yup.string().email("Invalid email format").required("Email is required"),
+    email: Yup.string()
+      .email("Invalid email format")
+      .required("Email is required"),
     currentAddress: Yup.string().required("Current Address is required"),
     currentCity: Yup.string().required("Current City is required"),
     currentState: Yup.string().required("Current State is required"),
     currentZip: Yup.string().required("Current ZIP code is required"),
-    currentAddressFromMonth: Yup.number().min(1).max(12).required("Move-in Month is required"),
-    currentAddressFromYear: Yup.number().min(1900).required("Move-in Year is required"),
+    currentAddressFromMonth: Yup.number()
+      .min(1)
+      .max(12)
+      .required("Move-in Month is required"),
+    currentAddressFromYear: Yup.number()
+      .min(1900)
+      .required("Move-in Year is required"),
   }),
   Yup.object().shape({
     licenseNumber: Yup.string().required("License Number is required"),
@@ -45,7 +75,10 @@ const stepSchemas = [
         city: Yup.string().required("City is required"),
         state: Yup.string().required("State is required"),
         zip: Yup.string().required("ZIP code is required"),
-        fromMonth: Yup.number().min(1).max(12).required("From Month is required"),
+        fromMonth: Yup.number()
+          .min(1)
+          .max(12)
+          .required("From Month is required"),
         fromYear: Yup.number().min(1900).required("From Year is required"),
         toMonth: Yup.number().min(1).max(12).required("To Month is required"),
         toYear: Yup.number().min(1900).required("To Year is required"),
@@ -53,16 +86,21 @@ const stepSchemas = [
     ),
   }),
   Yup.object().shape({
-    jobs: Yup.array().of(
-      Yup.object().shape({
-        employerName: Yup.string().required("Employer Name is required"),
-        positionHeld: Yup.string().required("Position Held is required"),
-        fromMonth: Yup.number().min(1).max(12).required("From Month is required"),
-        fromYear: Yup.number().min(1900).required("From Year is required"),
-        toMonth: Yup.number().min(1).max(12).required("To Month is required"),
-        toYear: Yup.number().min(1900).required("To Year is required"),
-      })
-    ).min(1, "At least one job is required"),
+    jobs: Yup.array()
+      .of(
+        Yup.object().shape({
+          employerName: Yup.string().required("Employer Name is required"),
+          positionHeld: Yup.string().required("Position Held is required"),
+          fromMonth: Yup.number()
+            .min(1)
+            .max(12)
+            .required("From Month is required"),
+          fromYear: Yup.number().min(1900).required("From Year is required"),
+          toMonth: Yup.number().min(1).max(12).required("To Month is required"),
+          toYear: Yup.number().min(1900).required("To Year is required"),
+        })
+      )
+      .min(1, "At least one job is required"),
   }),
   Yup.object().shape({
     socialSecurityNumber: Yup.string()
@@ -71,98 +109,148 @@ const stepSchemas = [
     consentToBackgroundCheck: Yup.number()
       .min(1, "You must consent to background check to proceed")
       .required("Background check consent is required"),
-  })
+  }),
 ];
 
-const stepTitles = ["Personal Information", "Contact & Address", "License Information", "Address History", "Employment History", "Background Check"];
-const stepLabels = ["Personal Info", "Contact & Address", "License Info", "Address History", "Employment", "Background Check"];
-
-const months = [
-  { value: 1, label: "January" },
-  { value: 2, label: "February" },
-  { value: 3, label: "March" },
-  { value: 4, label: "April" },
-  { value: 5, label: "May" },
-  { value: 6, label: "June" },
-  { value: 7, label: "July" },
-  { value: 8, label: "August" },
-  { value: 9, label: "September" },
-  { value: 10, label: "October" },
-  { value: 11, label: "November" },
-  { value: 12, label: "December" }
+const stepTitles = [
+  "Personal Information",
+  "Contact & Address",
+  "License Information",
+  "Address History",
+  "Employment History",
+  "Background Check",
+];
+const stepLabels = [
+  "Personal Info",
+  "Contact & Address",
+  "License Info",
+  "Address History",
+  "Employment",
+  "Background Check",
 ];
 
-const states = [
-  { value: "AL", label: "Alabama" },
-  { value: "AK", label: "Alaska" },
-  { value: "AZ", label: "Arizona" },
-  { value: "AR", label: "Arkansas" },
-  { value: "CA", label: "California" },
-  { value: "CO", label: "Colorado" },
-  { value: "CT", label: "Connecticut" },
-  { value: "DE", label: "Delaware" },
-  { value: "FL", label: "Florida" },
-  { value: "GA", label: "Georgia" },
-  { value: "HI", label: "Hawaii" },
-  { value: "ID", label: "Idaho" },
-  { value: "IL", label: "Illinois" },
-  { value: "IN", label: "Indiana" },
-  { value: "IA", label: "Iowa" },
-  { value: "KS", label: "Kansas" },
-  { value: "KY", label: "Kentucky" },
-  { value: "LA", label: "Louisiana" },
-  { value: "ME", label: "Maine" },
-  { value: "MD", label: "Maryland" },
-  { value: "MA", label: "Massachusetts" },
-  { value: "MI", label: "Michigan" },
-  { value: "MN", label: "Minnesota" },
-  { value: "MS", label: "Mississippi" },
-  { value: "MO", label: "Missouri" },
-  { value: "MT", label: "Montana" },
-  { value: "NE", label: "Nebraska" },
-  { value: "NV", label: "Nevada" },
-  { value: "NH", label: "New Hampshire" },
-  { value: "NJ", label: "New Jersey" },
-  { value: "NM", label: "New Mexico" },
-  { value: "NY", label: "New York" },
-  { value: "NC", label: "North Carolina" },
-  { value: "ND", label: "North Dakota" },
-  { value: "OH", label: "Ohio" },
-  { value: "OK", label: "Oklahoma" },
-  { value: "OR", label: "Oregon" },
-  { value: "PA", label: "Pennsylvania" },
-  { value: "RI", label: "Rhode Island" },
-  { value: "SC", label: "South Carolina" },
-  { value: "SD", label: "South Dakota" },
-  { value: "TN", label: "Tennessee" },
-  { value: "TX", label: "Texas" },
-  { value: "UT", label: "Utah" },
-  { value: "VT", label: "Vermont" },
-  { value: "VA", label: "Virginia" },
-  { value: "WA", label: "Washington" },
-  { value: "WV", label: "West Virginia" },
-  { value: "WI", label: "Wisconsin" },
-  { value: "WY", label: "Wyoming" }
-];
+// Helper function to get fields for each step
+const getStepFields = (step: number): (keyof DriverFormValues)[] => {
+  switch (step) {
+    case 0:
+      return ["firstName", "lastName", "dob"];
+    case 1:
+      return [
+        "phone",
+        "email",
+        "currentAddress",
+        "currentCity",
+        "currentState",
+        "currentZip",
+        "currentAddressFromMonth",
+        "currentAddressFromYear",
+      ];
+    case 2:
+      return ["licenseNumber", "licenseState", "positionAppliedFor"];
+    case 3:
+      return ["addresses"];
+    case 4:
+      return ["jobs"];
+    case 5:
+      return ["socialSecurityNumber", "consentToBackgroundCheck"];
+    default:
+      return [];
+  }
+};
+type Address = {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  fromMonth: number;
+  fromYear: number;
+  toMonth: number;
+  toYear: number;
+};
 
-const positions = [
-  { value: "local-driver", label: "Local Driver" },
-  { value: "regional-driver", label: "Regional Driver" },
-  { value: "long-haul-driver", label: "Long Haul Driver" },
-  { value: "delivery-driver", label: "Delivery Driver" }
-];
+type Job = {
+  employerName: string;
+  positionHeld: string;
+  fromMonth: number;
+  fromYear: number;
+  toMonth: number;
+  toYear: number;
+};
+
+export type DriverFormValues = {
+  // Step 1: Personal Information
+  firstName: string;
+  lastName: string;
+  dob: string;
+
+  // Step 2: Contact & Address
+  phone: string;
+  email: string;
+  currentAddress: string;
+  currentCity: string;
+  currentState: string;
+  currentZip: string;
+  currentAddressFromMonth: number;
+  currentAddressFromYear: number;
+
+  // Step 3: License Information
+  licenseNumber: string;
+  licenseState: string;
+  positionAppliedFor: string;
+
+  // Step 4: Address History
+  addresses: Address[];
+
+  // Step 5: Employment History
+  jobs: Job[];
+
+  // Step 6: Background Check
+  socialSecurityNumber: string;
+  consentToBackgroundCheck: number; // 1 for checked, 0 for not checked
+};
 
 export default function DriverForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [gapDetected, setGapDetected] = useState(false);
-  const [unemploymentPeriods, setUnemploymentPeriods] = useState<Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>>([]);
+  const [unemploymentPeriods, setUnemploymentPeriods] = useState<
+    Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>
+  >([]);
   const [residencyGapDetected, setResidencyGapDetected] = useState(false);
-  const [residencyPeriods, setResidencyPeriods] = useState<Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>>([]);
-  const [needsAdditionalAddresses, setNeedsAdditionalAddresses] = useState(false);
+  const [residencyPeriods, setResidencyPeriods] = useState<
+    Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>
+  >([]);
+  const [needsAdditionalAddresses, setNeedsAdditionalAddresses] =
+    useState(false);
   const { toast } = useToast();
 
-  const form = useForm({
-    resolver: yupResolver(stepSchemas[currentStep]),
+  const form = useForm<DriverFormValues>({
+    resolver: (values) => {
+      try {
+        stepSchemas[currentStep].validateSync(values, { abortEarly: false });
+        return {
+          values,
+          errors: {},
+        };
+      } catch (error: any) {
+        if (error.inner) {
+          const errors: any = {};
+          error.inner.forEach((err: any) => {
+            errors[err.path] = {
+              type: err.type,
+              message: err.message,
+            };
+          });
+          return {
+            values,
+            errors,
+          };
+        }
+        return {
+          values,
+          errors: {},
+        };
+      }
+    },
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -181,30 +269,48 @@ export default function DriverForm() {
       addresses: [],
       jobs: [],
       socialSecurityNumber: "",
-      consentToBackgroundCheck: 0
+      consentToBackgroundCheck: 0,
     },
-    mode: "onTouched"
+    mode: "onTouched",
   });
 
-  const { fields: addressFields, append: appendAddress, remove: removeAddress } = useFieldArray({
+  // Clear errors when step changes
+  useEffect(() => {
+    form.clearErrors();
+  }, [currentStep, form]);
+
+  const {
+    fields: addressFields,
+    append: appendAddress,
+    remove: removeAddress,
+  } = useFieldArray({
     control: form.control,
-    name: "addresses"
+    name: "addresses",
   });
 
-  const { fields: jobFields, append: appendJob, remove: removeJob } = useFieldArray({
+  const {
+    fields: jobFields,
+    append: appendJob,
+    remove: removeJob,
+  } = useFieldArray({
     control: form.control,
-    name: "jobs"
+    name: "jobs",
   });
 
   const submitMutation = useMutation({
     mutationFn: async (data: InsertDriverApplication) => {
-      const response = await apiRequest("POST", "/api/driver-applications", data);
+      const response = await apiRequest(
+        "POST",
+        "/api/driver-applications",
+        data
+      );
       return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Application Submitted Successfully",
-        description: "Your driver qualification application has been submitted for review.",
+        description:
+          "Your driver qualification application has been submitted for review.",
       });
       form.reset();
       setCurrentStep(0);
@@ -214,7 +320,9 @@ export default function DriverForm() {
     onError: (error: Error) => {
       toast({
         title: "Submission Failed",
-        description: error.message || "There was an error submitting your application. Please try again.",
+        description:
+          error.message ||
+          "There was an error submitting your application. Please try again.",
         variant: "destructive",
       });
     },
@@ -238,16 +346,19 @@ export default function DriverForm() {
         onSubmit(form.getValues());
       } else {
         setCurrentStep((prev) => prev + 1);
-        // Update form resolver for next step
         form.clearErrors();
       }
     }
   };
 
   const checkResidencyRequirements = () => {
-    const currentAddressFrom = dayjs(`${form.watch('currentAddressFromYear')}-${form.watch('currentAddressFromMonth')}-01`);
-    const threeYearsAgo = dayjs().subtract(3, 'year');
-    
+    const currentAddressFrom = dayjs(
+      `${form.watch("currentAddressFromYear")}-${form.watch(
+        "currentAddressFromMonth"
+      )}-01`
+    );
+    const threeYearsAgo = dayjs().subtract(3, "year");
+
     if (currentAddressFrom.isAfter(threeYearsAgo)) {
       setNeedsAdditionalAddresses(true);
     } else {
@@ -257,31 +368,39 @@ export default function DriverForm() {
       form.clearErrors();
       return;
     }
-    
+
     setCurrentStep((prev) => prev + 1);
     form.clearErrors();
   };
 
   const checkForResidencyGaps = () => {
-    const currentAddressFrom = dayjs(`${form.watch('currentAddressFromYear')}-${form.watch('currentAddressFromMonth')}-01`);
+    const currentAddressFrom = dayjs(
+      `${form.watch("currentAddressFromYear")}-${form.watch(
+        "currentAddressFromMonth"
+      )}-01`
+    );
     const addresses = form.watch("addresses").sort((a, b) => {
-      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf('month');
-      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf('month');
+      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf("month");
+      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf("month");
       return bDate.diff(aDate);
     });
 
     let gaps: Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }> = [];
     let lastToDate = currentAddressFrom;
-    const threeYearsAgo = dayjs().subtract(3, 'year');
+    const threeYearsAgo = dayjs().subtract(3, "year");
 
     addresses.forEach((address) => {
-      const addressTo = dayjs(`${address.toYear}-${address.toMonth}-01`).endOf('month');
-      const addressFrom = dayjs(`${address.fromYear}-${address.fromMonth}-01`).startOf('month');
+      const addressTo = dayjs(`${address.toYear}-${address.toMonth}-01`).endOf(
+        "month"
+      );
+      const addressFrom = dayjs(
+        `${address.fromYear}-${address.fromMonth}-01`
+      ).startOf("month");
 
-      if (lastToDate.diff(addressTo, 'month') > 1) {
+      if (lastToDate.diff(addressTo, "month") > 1) {
         gaps.push({
-          from: addressTo.add(1, 'month'),
-          to: lastToDate.subtract(1, 'month')
+          from: addressTo.add(1, "month"),
+          to: lastToDate.subtract(1, "month"),
         });
       }
       lastToDate = addressFrom;
@@ -291,7 +410,7 @@ export default function DriverForm() {
     if (lastToDate.isAfter(threeYearsAgo)) {
       gaps.push({
         from: threeYearsAgo,
-        to: lastToDate.subtract(1, 'month')
+        to: lastToDate.subtract(1, "month"),
       });
     }
 
@@ -307,8 +426,8 @@ export default function DriverForm() {
 
   const checkForEmploymentGaps = () => {
     const jobs = form.watch("jobs").sort((a, b) => {
-      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf('month');
-      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf('month');
+      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf("month");
+      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf("month");
       return bDate.diff(aDate);
     });
 
@@ -317,13 +436,15 @@ export default function DriverForm() {
     let lastToDate = today;
 
     jobs.forEach((job) => {
-      const jobTo = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf('month');
-      const jobFrom = dayjs(`${job.fromYear}-${job.fromMonth}-01`).startOf('month');
+      const jobTo = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf("month");
+      const jobFrom = dayjs(`${job.fromYear}-${job.fromMonth}-01`).startOf(
+        "month"
+      );
 
-      if (lastToDate.diff(jobTo, 'month') > 1) {
+      if (lastToDate.diff(jobTo, "month") > 1) {
         gaps.push({
-          from: jobTo.add(1, 'month'),
-          to: lastToDate.subtract(1, 'month')
+          from: jobTo.add(1, "month"),
+          to: lastToDate.subtract(1, "month"),
         });
       }
       lastToDate = jobFrom;
@@ -344,8 +465,8 @@ export default function DriverForm() {
     let totalMonths = 0;
     jobs.forEach((job) => {
       const from = dayjs(`${job.fromYear}-${job.fromMonth}-01`);
-      const to = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf('month');
-      totalMonths += to.diff(from, 'month') + 1;
+      const to = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf("month");
+      totalMonths += to.diff(from, "month") + 1;
     });
     return totalMonths;
   };
@@ -362,24 +483,41 @@ export default function DriverForm() {
 
   const onSubmit = (data: any) => {
     const formattedData: InsertDriverApplication = {
-      ...data,
-      currentAddressFromMonth: Number(data.currentAddressFromMonth),
-      currentAddressFromYear: Number(data.currentAddressFromYear),
-      consentToBackgroundCheck: Number(data.consentToBackgroundCheck),
+      company_id: 1, // TODO: Get from context/params
+      first_name: data.firstName,
+      last_name: data.lastName,
+      dob: data.dob,
+      phone: data.phone,
+      email: data.email,
+      current_address: data.currentAddress,
+      current_city: data.currentCity,
+      current_state: data.currentState,
+      current_zip: data.currentZip,
+      current_address_from_month: Number(data.currentAddressFromMonth),
+      current_address_from_year: Number(data.currentAddressFromYear),
+      license_number: data.licenseNumber,
+      license_state: data.licenseState,
+      position_applied_for: data.positionAppliedFor,
       addresses: data.addresses.map((addr: any) => ({
-        ...addr,
+        address: addr.address,
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
         fromMonth: Number(addr.fromMonth),
         fromYear: Number(addr.fromYear),
         toMonth: Number(addr.toMonth),
         toYear: Number(addr.toYear),
       })),
       jobs: data.jobs.map((job: any) => ({
-        ...job,
+        employerName: job.employerName,
+        positionHeld: job.positionHeld,
         fromMonth: Number(job.fromMonth),
         fromYear: Number(job.fromYear),
         toMonth: Number(job.toMonth),
         toYear: Number(job.toYear),
       })),
+      social_security_number: data.socialSecurityNumber,
+      consent_to_background_check: Number(data.consentToBackgroundCheck),
     };
     submitMutation.mutate(formattedData);
   };
@@ -392,14 +530,86 @@ export default function DriverForm() {
         {/* Header Section */}
         <Card className="shadow-sm border-slate-200 mb-8">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <IdCard className="text-blue-600 h-6 w-6" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="bg-blue-100 p-3 rounded-full">
+                  <IdCard className="text-blue-600 h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    Driver Qualification Application
+                  </h1>
+                  <p className="text-slate-600 mt-1">
+                    Complete all sections to submit your driver application
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Driver Qualification Application</h1>
-                <p className="text-slate-600 mt-1">Complete all sections to submit your driver application</p>
-              </div>
+
+              {/* Test Data Buttons - Only show in development */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      loadTestData(form, "full");
+                      setCurrentStep(0);
+                      setNeedsAdditionalAddresses(true);
+                      setGapDetected(false);
+                      setResidencyGapDetected(false);
+                      toast({
+                        title: "Test Data Loaded",
+                        description:
+                          "Full test data has been loaded into the form.",
+                      });
+                    }}
+                    className="text-xs"
+                  >
+                    Load Full Test Data
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      loadTestData(form, "minimal");
+                      setCurrentStep(0);
+                      setNeedsAdditionalAddresses(false);
+                      setGapDetected(false);
+                      setResidencyGapDetected(false);
+                      toast({
+                        title: "Test Data Loaded",
+                        description:
+                          "Minimal test data has been loaded into the form.",
+                      });
+                    }}
+                    className="text-xs"
+                  >
+                    Load Minimal Test Data
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      loadTestData(form, "gaps");
+                      setCurrentStep(0);
+                      setNeedsAdditionalAddresses(true);
+                      setGapDetected(true);
+                      setResidencyGapDetected(true);
+                      toast({
+                        title: "Test Data Loaded",
+                        description:
+                          "Test data with gaps has been loaded into the form.",
+                      });
+                    }}
+                    className="text-xs"
+                  >
+                    Load Gaps Test Data
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -408,25 +618,40 @@ export default function DriverForm() {
         <Card className="shadow-sm border-slate-200 mb-8">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">{stepTitles[currentStep]}</h2>
-              <span className="text-sm text-slate-500">Step {currentStep + 1} of {stepTitles.length}</span>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {stepTitles[currentStep]}
+              </h2>
+              <span className="text-sm text-slate-500">
+                Step {currentStep + 1} of {stepTitles.length}
+              </span>
             </div>
-            
+
             <Progress value={progressPercentage} className="mb-6 h-3" />
-            
-            <div className="flex items-center justify-between">
+
+            <div className="flex items-start justify-between">
               {stepTitles.map((_, index) => (
-                <div key={index} className="flex flex-col items-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                    index <= currentStep 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-slate-200 text-slate-500'
-                  }`}>
-                    {index < currentStep ? <CheckCircle className="h-5 w-5" /> : index + 1}
+                <div
+                  key={index}
+                  className="flex flex-col items-center space-y-2"
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                      index <= currentStep
+                        ? "bg-blue-500 text-white"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {index < currentStep ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
-                  <span className={`text-xs text-center max-w-20 ${
-                    index <= currentStep ? 'text-slate-600' : 'text-slate-400'
-                  }`}>
+                  <span
+                    className={`text-xs text-center max-w-20 ${
+                      index <= currentStep ? "text-slate-600" : "text-slate-400"
+                    }`}
+                  >
                     {stepLabels[index]}
                   </span>
                 </div>
@@ -439,8 +664,10 @@ export default function DriverForm() {
         <Card className="shadow-sm border-slate-200">
           <CardContent className="p-8">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 {/* Step 1: Personal Information */}
                 {currentStep === 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -449,35 +676,48 @@ export default function DriverForm() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>First Name <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>
+                            First Name <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter your first name" {...field} />
+                            <Input
+                              placeholder="Enter your first name"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Last Name <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>
+                            Last Name <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter your last name" {...field} />
+                            <Input
+                              placeholder="Enter your last name"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="dob"
                       render={({ field }) => (
                         <FormItem className="md:col-span-1">
-                          <FormLabel>Date of Birth <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>
+                            Date of Birth{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -497,7 +737,10 @@ export default function DriverForm() {
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Phone Number{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input placeholder="(555) 123-4567" {...field} />
                             </FormControl>
@@ -505,15 +748,22 @@ export default function DriverForm() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Email Address{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="email" placeholder="john.smith@email.com" {...field} />
+                              <Input
+                                type="email"
+                                placeholder="john.smith@email.com"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -522,28 +772,38 @@ export default function DriverForm() {
                     </div>
 
                     <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Current Address</h3>
+                      <h3 className="text-lg font-semibold mb-4">
+                        Current Address
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
                           name="currentAddress"
                           render={({ field }) => (
                             <FormItem className="md:col-span-2">
-                              <FormLabel>Street Address <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                Street Address{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
-                                <Input placeholder="123 Main Street" {...field} />
+                                <Input
+                                  placeholder="123 Main Street"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="currentCity"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>City <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                City <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
                                 <Input placeholder="City" {...field} />
                               </FormControl>
@@ -551,21 +811,29 @@ export default function DriverForm() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="currentState"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>State <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                State <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                >
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select state" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {states.map((state) => (
-                                      <SelectItem key={state.value} value={state.value}>
+                                      <SelectItem
+                                        key={state.value}
+                                        value={state.value}
+                                      >
                                         {state.label}
                                       </SelectItem>
                                     ))}
@@ -576,13 +844,15 @@ export default function DriverForm() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="currentZip"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>ZIP Code <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                ZIP Code <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
                                 <Input placeholder="12345" {...field} />
                               </FormControl>
@@ -590,21 +860,32 @@ export default function DriverForm() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="currentAddressFromMonth"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Month Moved In <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                Month Moved In{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
-                                <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                                <Select
+                                  onValueChange={(value) =>
+                                    field.onChange(Number(value))
+                                  }
+                                  value={field.value?.toString()}
+                                >
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select month" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {months.map((month) => (
-                                      <SelectItem key={month.value} value={month.value.toString()}>
+                                      <SelectItem
+                                        key={month.value}
+                                        value={month.value.toString()}
+                                      >
                                         {month.label}
                                       </SelectItem>
                                     ))}
@@ -615,21 +896,26 @@ export default function DriverForm() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="currentAddressFromYear"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Year Moved In <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel>
+                                Year Moved In{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  placeholder="2024" 
+                                <Input
+                                  type="number"
+                                  placeholder="2024"
                                   min="1900"
                                   max={new Date().getFullYear()}
                                   {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
                                 />
                               </FormControl>
                               <FormMessage />
@@ -649,7 +935,10 @@ export default function DriverForm() {
                       name="licenseNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>License Number <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>
+                            License Number{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input placeholder="D123456789" {...field} />
                           </FormControl>
@@ -657,14 +946,20 @@ export default function DriverForm() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="licenseState"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>License State <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormLabel>
+                            License State{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select State" />
@@ -672,7 +967,10 @@ export default function DriverForm() {
                             </FormControl>
                             <SelectContent>
                               {states.map((state) => (
-                                <SelectItem key={state.value} value={state.value}>
+                                <SelectItem
+                                  key={state.value}
+                                  value={state.value}
+                                >
                                   {state.label}
                                 </SelectItem>
                               ))}
@@ -682,14 +980,20 @@ export default function DriverForm() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="positionAppliedFor"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel>Position Applied For <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormLabel>
+                            Position Applied For{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Position" />
@@ -697,7 +1001,10 @@ export default function DriverForm() {
                             </FormControl>
                             <SelectContent>
                               {positions.map((position) => (
-                                <SelectItem key={position.value} value={position.value}>
+                                <SelectItem
+                                  key={position.value}
+                                  value={position.value}
+                                >
                                   {position.label}
                                 </SelectItem>
                               ))}
@@ -719,38 +1026,51 @@ export default function DriverForm() {
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                         </div>
                         <div>
-                          <h4 className="font-medium text-blue-800">Address History Required</h4>
+                          <h4 className="font-medium text-blue-800">
+                            Address History Required
+                          </h4>
                           <p className="text-blue-700 text-sm mt-1">
-                            Since you've lived at your current address for less than 3 years, please provide your previous addresses to complete your 3-year residency history.
+                            Since you've lived at your current address for less
+                            than 3 years, please provide your previous addresses
+                            to complete your 3-year residency history.
                           </p>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-slate-900">Address History</h3>
+                      <h3 className="text-lg font-medium text-slate-900">
+                        Address History
+                      </h3>
                       <Button
                         type="button"
-                        onClick={() => appendAddress({
-                          address: "",
-                          city: "",
-                          state: "",
-                          zip: "",
-                          fromMonth: 1,
-                          fromYear: new Date().getFullYear(),
-                          toMonth: 12,
-                          toYear: new Date().getFullYear()
-                        })}
+                        onClick={() =>
+                          appendAddress({
+                            address: "",
+                            city: "",
+                            state: "",
+                            zip: "",
+                            fromMonth: 1,
+                            fromYear: new Date().getFullYear(),
+                            toMonth: 12,
+                            toYear: new Date().getFullYear(),
+                          })
+                        }
                         className="bg-blue-500 hover:bg-blue-600"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Address
                       </Button>
                     </div>
-                    
+
                     {addressFields.map((item, index) => (
-                      <div key={item.id} className="border border-slate-200 rounded-lg p-6 bg-slate-50">
+                      <div
+                        key={item.id}
+                        className="border border-slate-200 rounded-lg p-6 bg-slate-50"
+                      >
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium text-slate-900">Address {index + 1}</h4>
+                          <h4 className="font-medium text-slate-900">
+                            Address {index + 1}
+                          </h4>
                           {addressFields.length > 1 && (
                             <Button
                               type="button"
@@ -763,7 +1083,7 @@ export default function DriverForm() {
                             </Button>
                           )}
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -772,13 +1092,16 @@ export default function DriverForm() {
                               <FormItem className="md:col-span-2">
                                 <FormLabel>Street Address</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="123 Main Street" {...field} />
+                                  <Input
+                                    placeholder="123 Main Street"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`addresses.${index}.city`}
@@ -786,20 +1109,26 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>City</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="San Francisco" {...field} />
+                                  <Input
+                                    placeholder="San Francisco"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`addresses.${index}.state`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>State</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select State" />
@@ -807,7 +1136,10 @@ export default function DriverForm() {
                                   </FormControl>
                                   <SelectContent>
                                     {states.map((state) => (
-                                      <SelectItem key={state.value} value={state.value}>
+                                      <SelectItem
+                                        key={state.value}
+                                        value={state.value}
+                                      >
                                         {state.label}
                                       </SelectItem>
                                     ))}
@@ -817,7 +1149,7 @@ export default function DriverForm() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`addresses.${index}.zip`}
@@ -831,7 +1163,7 @@ export default function DriverForm() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`addresses.${index}.fromMonth`}
@@ -839,7 +1171,12 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>From Date</FormLabel>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={field.value?.toString()}>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Month" />
@@ -847,7 +1184,10 @@ export default function DriverForm() {
                                     </FormControl>
                                     <SelectContent>
                                       {months.map((month) => (
-                                        <SelectItem key={month.value} value={month.value.toString()}>
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
                                           {month.label}
                                         </SelectItem>
                                       ))}
@@ -862,7 +1202,11 @@ export default function DriverForm() {
                                           type="number"
                                           placeholder="2020"
                                           {...yearField}
-                                          onChange={(e) => yearField.onChange(Number(e.target.value))}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
                                         />
                                       </FormControl>
                                     )}
@@ -872,7 +1216,7 @@ export default function DriverForm() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`addresses.${index}.toMonth`}
@@ -880,7 +1224,12 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>To Date</FormLabel>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={field.value?.toString()}>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Month" />
@@ -888,7 +1237,10 @@ export default function DriverForm() {
                                     </FormControl>
                                     <SelectContent>
                                       {months.map((month) => (
-                                        <SelectItem key={month.value} value={month.value.toString()}>
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
                                           {month.label}
                                         </SelectItem>
                                       ))}
@@ -903,7 +1255,11 @@ export default function DriverForm() {
                                           type="number"
                                           placeholder="2024"
                                           {...yearField}
-                                          onChange={(e) => yearField.onChange(Number(e.target.value))}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
                                         />
                                       </FormControl>
                                     )}
@@ -925,9 +1281,12 @@ export default function DriverForm() {
                     <div className="flex items-start space-x-3">
                       <CheckCircle className="text-green-500 mt-1 h-5 w-5" />
                       <div>
-                        <h4 className="font-medium text-green-800">Address History Complete</h4>
+                        <h4 className="font-medium text-green-800">
+                          Address History Complete
+                        </h4>
                         <p className="text-green-700 text-sm mt-1">
-                          Since you've lived at your current address for 3 years or more, no additional address history is needed.
+                          Since you've lived at your current address for 3 years
+                          or more, no additional address history is needed.
                         </p>
                       </div>
                     </div>
@@ -940,13 +1299,18 @@ export default function DriverForm() {
                     <div className="flex items-start space-x-3">
                       <AlertTriangle className="text-amber-500 mt-1 h-5 w-5" />
                       <div>
-                        <h4 className="font-medium text-amber-800">Residency Gap Detected</h4>
+                        <h4 className="font-medium text-amber-800">
+                          Residency Gap Detected
+                        </h4>
                         <p className="text-amber-700 text-sm mt-1">
-                          We detected gaps in your 3-year residency history. Please add additional addresses to cover these periods.
+                          We detected gaps in your 3-year residency history.
+                          Please add additional addresses to cover these
+                          periods.
                         </p>
                         {residencyPeriods.map((gap, idx) => (
                           <p key={idx} className="text-amber-700 text-sm">
-                            Gap between {gap.from.format('MM/YYYY')} and {gap.to.format('MM/YYYY')}
+                            Gap between {gap.from.format("MM/YYYY")} and{" "}
+                            {gap.to.format("MM/YYYY")}
                           </p>
                         ))}
                       </div>
@@ -958,36 +1322,45 @@ export default function DriverForm() {
                 {currentStep === 4 && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-slate-900">Employment History</h3>
+                      <h3 className="text-lg font-medium text-slate-900">
+                        Employment History
+                      </h3>
                       <Button
                         type="button"
-                        onClick={() => appendJob({
-                          employerName: "",
-                          positionHeld: "",
-                          fromMonth: 1,
-                          fromYear: new Date().getFullYear(),
-                          toMonth: 12,
-                          toYear: new Date().getFullYear()
-                        })}
+                        onClick={() =>
+                          appendJob({
+                            employerName: "",
+                            positionHeld: "",
+                            fromMonth: 1,
+                            fromYear: new Date().getFullYear(),
+                            toMonth: 12,
+                            toYear: new Date().getFullYear(),
+                          })
+                        }
                         className="bg-blue-500 hover:bg-blue-600"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Job
                       </Button>
                     </div>
-                    
+
                     {gapDetected && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                         <div className="flex items-start space-x-3">
                           <AlertTriangle className="text-amber-500 mt-1 h-5 w-5" />
                           <div>
-                            <h4 className="font-medium text-amber-800">Employment Gap Detected</h4>
+                            <h4 className="font-medium text-amber-800">
+                              Employment Gap Detected
+                            </h4>
                             <p className="text-amber-700 text-sm mt-1">
-                              We detected gaps in your employment history. Please add additional jobs or explain unemployment periods to meet the 36-month requirement.
+                              We detected gaps in your employment history.
+                              Please add additional jobs or explain unemployment
+                              periods to meet the 36-month requirement.
                             </p>
                             {unemploymentPeriods.map((gap, idx) => (
                               <p key={idx} className="text-amber-700 text-sm">
-                                Gap between {gap.from.format('MM/YYYY')} and {gap.to.format('MM/YYYY')}
+                                Gap between {gap.from.format("MM/YYYY")} and{" "}
+                                {gap.to.format("MM/YYYY")}
                               </p>
                             ))}
                             <Button
@@ -1005,11 +1378,16 @@ export default function DriverForm() {
                         </div>
                       </div>
                     )}
-                    
+
                     {jobFields.map((item, index) => (
-                      <div key={item.id} className="border border-slate-200 rounded-lg p-6 bg-slate-50">
+                      <div
+                        key={item.id}
+                        className="border border-slate-200 rounded-lg p-6 bg-slate-50"
+                      >
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium text-slate-900">Job {index + 1}</h4>
+                          <h4 className="font-medium text-slate-900">
+                            Job {index + 1}
+                          </h4>
                           {jobFields.length > 1 && (
                             <Button
                               type="button"
@@ -1022,7 +1400,7 @@ export default function DriverForm() {
                             </Button>
                           )}
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -1031,13 +1409,16 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>Employer Name</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="ABC Transportation" {...field} />
+                                  <Input
+                                    placeholder="ABC Transportation"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`jobs.${index}.positionHeld`}
@@ -1045,13 +1426,16 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>Position Held</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Delivery Driver" {...field} />
+                                  <Input
+                                    placeholder="Delivery Driver"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`jobs.${index}.fromMonth`}
@@ -1059,7 +1443,12 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>From Date</FormLabel>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={field.value?.toString()}>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Month" />
@@ -1067,7 +1456,10 @@ export default function DriverForm() {
                                     </FormControl>
                                     <SelectContent>
                                       {months.map((month) => (
-                                        <SelectItem key={month.value} value={month.value.toString()}>
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
                                           {month.label}
                                         </SelectItem>
                                       ))}
@@ -1082,7 +1474,11 @@ export default function DriverForm() {
                                           type="number"
                                           placeholder="2021"
                                           {...yearField}
-                                          onChange={(e) => yearField.onChange(Number(e.target.value))}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
                                         />
                                       </FormControl>
                                     )}
@@ -1092,7 +1488,7 @@ export default function DriverForm() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name={`jobs.${index}.toMonth`}
@@ -1100,7 +1496,12 @@ export default function DriverForm() {
                               <FormItem>
                                 <FormLabel>To Date</FormLabel>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={field.value?.toString()}>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Month" />
@@ -1108,7 +1509,10 @@ export default function DriverForm() {
                                     </FormControl>
                                     <SelectContent>
                                       {months.map((month) => (
-                                        <SelectItem key={month.value} value={month.value.toString()}>
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
                                           {month.label}
                                         </SelectItem>
                                       ))}
@@ -1123,7 +1527,11 @@ export default function DriverForm() {
                                           type="number"
                                           placeholder="2024"
                                           {...yearField}
-                                          onChange={(e) => yearField.onChange(Number(e.target.value))}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
                                         />
                                       </FormControl>
                                     )}
@@ -1148,9 +1556,14 @@ export default function DriverForm() {
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                         </div>
                         <div>
-                          <h4 className="font-medium text-blue-800">Background Check Authorization</h4>
+                          <h4 className="font-medium text-blue-800">
+                            Background Check Authorization
+                          </h4>
                           <p className="text-blue-700 text-sm mt-1">
-                            To complete your driver application, we need to perform a comprehensive background check including criminal history, driving record, and employment verification.
+                            To complete your driver application, we need to
+                            perform a comprehensive background check including
+                            criminal history, driving record, and employment
+                            verification.
                           </p>
                         </div>
                       </div>
@@ -1162,18 +1575,27 @@ export default function DriverForm() {
                         name="socialSecurityNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Social Security Number <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Social Security Number{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="123-45-6789" 
+                              <Input
+                                placeholder="123-45-6789"
                                 {...field}
                                 onChange={(e) => {
                                   // Auto-format SSN with dashes
-                                  let value = e.target.value.replace(/\D/g, '');
+                                  let value = e.target.value.replace(/\D/g, "");
                                   if (value.length >= 6) {
-                                    value = value.replace(/(\d{3})(\d{2})(\d{4})/, '$1-$2-$3');
+                                    value = value.replace(
+                                      /(\d{3})(\d{2})(\d{4})/,
+                                      "$1-$2-$3"
+                                    );
                                   } else if (value.length >= 4) {
-                                    value = value.replace(/(\d{3})(\d{2})/, '$1-$2');
+                                    value = value.replace(
+                                      /(\d{3})(\d{2})/,
+                                      "$1-$2"
+                                    );
                                   }
                                   field.onChange(value);
                                 }}
@@ -1191,12 +1613,26 @@ export default function DriverForm() {
                             <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-medium text-amber-800 mb-2">Background Check Details</h4>
+                            <h4 className="font-medium text-amber-800 mb-2">
+                              Background Check Details
+                            </h4>
                             <div className="text-amber-700 text-sm space-y-1">
-                              <p>• <strong>Criminal History Check:</strong> National and local criminal records</p>
-                              <p>• <strong>Driving Record:</strong> MVR check for violations, suspensions, and accidents</p>
-                              <p>• <strong>Employment Verification:</strong> Confirmation of previous employment history</p>
-                              <p>• <strong>Drug Screening:</strong> DOT-compliant drug testing (scheduled separately)</p>
+                              <p>
+                                • <strong>Criminal History Check:</strong>{" "}
+                                National and local criminal records
+                              </p>
+                              <p>
+                                • <strong>Driving Record:</strong> MVR check for
+                                violations, suspensions, and accidents
+                              </p>
+                              <p>
+                                • <strong>Employment Verification:</strong>{" "}
+                                Confirmation of previous employment history
+                              </p>
+                              <p>
+                                • <strong>Drug Screening:</strong> DOT-compliant
+                                drug testing (scheduled separately)
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -1213,19 +1649,28 @@ export default function DriverForm() {
                                   <input
                                     type="checkbox"
                                     checked={field.value === 1}
-                                    onChange={(e) => field.onChange(e.target.checked ? 1 : 0)}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.checked ? 1 : 0)
+                                    }
                                     className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                   />
                                 </FormControl>
                                 <div className="flex-1">
                                   <FormLabel className="text-sm font-medium text-slate-900">
-                                    Background Check Consent <span className="text-red-500">*</span>
+                                    Background Check Consent{" "}
+                                    <span className="text-red-500">*</span>
                                   </FormLabel>
                                   <p className="text-sm text-slate-600 mt-1">
-                                    I hereby authorize the company to conduct a comprehensive background check including but not limited to: 
-                                    criminal history, driving record, employment verification, and drug screening. I understand that this 
-                                    information will be used to determine my eligibility for employment as a driver. I certify that all 
-                                    information provided is true and accurate to the best of my knowledge.
+                                    I hereby authorize the company to conduct a
+                                    comprehensive background check including but
+                                    not limited to: criminal history, driving
+                                    record, employment verification, and drug
+                                    screening. I understand that this
+                                    information will be used to determine my
+                                    eligibility for employment as a driver. I
+                                    certify that all information provided is
+                                    true and accurate to the best of my
+                                    knowledge.
                                   </p>
                                 </div>
                               </div>
@@ -1241,10 +1686,14 @@ export default function DriverForm() {
                             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                           </div>
                           <div>
-                            <h4 className="font-medium text-green-800">Next Steps</h4>
+                            <h4 className="font-medium text-green-800">
+                              Next Steps
+                            </h4>
                             <p className="text-green-700 text-sm mt-1">
-                              After submitting your application, we'll initiate the background check process. 
-                              You'll receive updates via email and can track the status in your applicant portal.
+                              After submitting your application, we'll initiate
+                              the background check process. You'll receive
+                              updates via email and can track the status in your
+                              applicant portal.
                             </p>
                           </div>
                         </div>
@@ -1265,12 +1714,16 @@ export default function DriverForm() {
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Previous
                   </Button>
-                  
+
                   <div className="flex items-center space-x-4">
-                    <Button type="button" variant="ghost" className="text-slate-500 hover:text-slate-700">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-slate-500 hover:text-slate-700"
+                    >
                       Save Draft
                     </Button>
-                    
+
                     {currentStep < stepTitles.length - 1 ? (
                       <Button
                         type="button"
@@ -1288,7 +1741,9 @@ export default function DriverForm() {
                         disabled={submitMutation.isPending}
                         className="bg-blue-500 hover:bg-blue-600"
                       >
-                        {submitMutation.isPending ? "Submitting..." : "Submit Application"}
+                        {submitMutation.isPending
+                          ? "Submitting..."
+                          : "Submit Application"}
                       </Button>
                     )}
                   </div>
