@@ -4,22 +4,22 @@ import type {
 } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 
-if (!process.env.REACT_APP_SUPABASE_URL) {
+if (!process.env.VITE_SUPABASE_URL) {
   throw new Error(
-    "REACT_APP_SUPABASE_URL must be set. Did you forget to set up your Supabase project?"
+    "VITE_SUPABASE_URL must be set. Did you forget to set up your Supabase project?"
   );
 }
 
-if (!process.env.REACT_APP_SUPABASE_ANON_KEY) {
+if (!process.env.VITE_SUPABASE_ANON_KEY) {
   throw new Error(
-    "REACT_APP_SUPABASE_ANON_KEY must be set. This is needed for server-side operations."
+    "VITE_SUPABASE_ANON_KEY must be set. This is needed for server-side operations."
   );
 }
 
 // Create Supabase client for server-side operations
 export const supabase = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SUPABASE_ANON_KEY,
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY,
   {
     auth: {
       autoRefreshToken: false,
@@ -85,5 +85,39 @@ export const db = {
 
     if (error) throw error;
     return application;
+  },
+
+  async getCompanyBySlug(slug: string) {
+    const { data: company, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("slug", slug)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
+    return company;
+  },
+
+  async getCompanyById(id: string) {
+    const { data: company, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
+    return company;
   },
 };

@@ -38,38 +38,75 @@ app.use((req, res, next) => {
   next();
 });
 
+// Global error handlers to prevent server crashes
+process.on("uncaughtException", (error) => {
+  log(`Uncaught Exception: ${error.message}`);
+  log(error.stack || "No stack trace available");
+  // Don't exit immediately, let the server try to continue
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  log(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  // Don't exit immediately, let the server try to continue
+});
+
 (async () => {
-  const server = await registerRoutes(app);
+  try {
+    const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
-  });
+      log(`Error ${status}: ${message}`);
+      if (err.stack) {
+        log(err.stack);
+      }
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+      res.status(status).json({ message });
+      // Don't throw the error - just log it and continue
+    });
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
     }
-  );
+
+    // ALWAYS serve the app on port 5000
+    // this serves both the API and the client.
+    // It is the only port that is not firewalled.
+    const port = 5000;
+    server.listen(
+      {
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      },
+      () => {
+        log(`serving on port ${port}`);
+      }
+    );
+
+    // Handle server errors
+    server.on("error", (error) => {
+      log(`Server error: ${error.message}`);
+      if (error.stack) {
+        log(error.stack);
+      }
+    });
+  } catch (error) {
+    log(
+      `Failed to start server: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+    if (error instanceof Error && error.stack) {
+      log(error.stack);
+    }
+    process.exit(1);
+  }
 })();

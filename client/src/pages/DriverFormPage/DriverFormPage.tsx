@@ -209,7 +209,7 @@ export type DriverFormValues = {
   consentToBackgroundCheck: number; // 1 for checked, 0 for not checked
 };
 
-export default function DriverForm() {
+export function DriverFormPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [gapDetected, setGapDetected] = useState(false);
   const [unemploymentPeriods, setUnemploymentPeriods] = useState<
@@ -742,7 +742,7 @@ export default function DriverForm() {
                               <span className="text-red-500">*</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="(555) 123-4567" {...field} />
+                              <Input placeholder="5551234567" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
