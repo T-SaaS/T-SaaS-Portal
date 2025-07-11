@@ -86,4 +86,38 @@ export const db = {
     if (error) throw error;
     return application;
   },
+
+  async getCompanyBySlug(slug: string) {
+    const { data: company, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("slug", slug)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
+    return company;
+  },
+
+  async getCompanyById(id: string) {
+    const { data: company, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
+    return company;
+  },
 };

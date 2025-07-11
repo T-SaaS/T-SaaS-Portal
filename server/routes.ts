@@ -243,6 +243,104 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Get company by slug
+  app.get("/api/companies/slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      if (!slug) {
+        return res.status(400).json({
+          success: false,
+          message: "Company slug is required",
+          error: "MISSING_SLUG",
+        });
+      }
+
+      console.log(`Fetching company by slug: ${slug}`);
+
+      const company = await db.getCompanyBySlug(slug);
+
+      if (!company) {
+        console.log(`Company with slug ${slug} not found`);
+        return res.status(404).json({
+          success: false,
+          message: "Company not found",
+          error: "NOT_FOUND",
+        });
+      }
+
+      console.log(`Retrieved company: ${company.name}`);
+
+      res.json({
+        success: true,
+        message: "Company retrieved successfully",
+        data: company,
+      });
+    } catch (error) {
+      console.error(`Error in GET /api/companies/slug/${req.params.slug}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        slug: req.params.slug,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve company",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get company by ID (for internal use)
+  app.get("/api/companies/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Company ID is required",
+          error: "MISSING_ID",
+        });
+      }
+
+      console.log(`Fetching company by ID: ${id}`);
+
+      const company = await db.getCompanyById(id);
+
+      if (!company) {
+        console.log(`Company with ID ${id} not found`);
+        return res.status(404).json({
+          success: false,
+          message: "Company not found",
+          error: "NOT_FOUND",
+        });
+      }
+
+      console.log(`Retrieved company: ${company.name}`);
+
+      res.json({
+        success: true,
+        message: "Company retrieved successfully",
+        data: company,
+      });
+    } catch (error) {
+      console.error(`Error in GET /api/companies/${req.params.id}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        id: req.params.id,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve company",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
