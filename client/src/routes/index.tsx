@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ExternalTemplate } from "@/templates/ExternalTemplate";
 import { PrivateTemplate } from "@/templates/PrivateTemplate";
 import { CompanyProvider } from "@/contexts/CompanyContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import {
   DriverFormPage,
   DashboardPage,
@@ -11,6 +12,7 @@ import {
 } from "@/pages";
 import { DriverFormPageRefactored } from "@/pages/DriverFormPage/DriverFormPageRefactored";
 import { ThankYouPage } from "@/pages/ThankYouPage/ThankYouPage";
+import { LoginPage } from "@/pages/LoginPage/LoginPage";
 
 // External routes - accessible without authentication
 const externalRoutes = [
@@ -19,15 +21,20 @@ const externalRoutes = [
     element: <DriverFormPageRefactored />,
     title: "Driver Application",
   },
-  {
-    path: "/apply",
-    element: <DriverFormPage />,
-    title: "Driver Application",
-  },
+  // {
+  //   path: "/apply",
+  //   element: <DriverFormPage />,
+  //   title: "Driver Application",
+  // },
   {
     path: "/thank-you",
     element: <ThankYouPage />,
     title: "Thank You",
+  },
+  {
+    path: "/login",
+    element: <LoginPage />,
+    title: "Login",
   },
 ];
 
@@ -68,7 +75,13 @@ export function AppRouter() {
         </Route>
 
         {/* Private Routes */}
-        <Route element={<PrivateTemplate />}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <PrivateTemplate />
+            </ProtectedRoute>
+          }
+        >
           {privateRoutes.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

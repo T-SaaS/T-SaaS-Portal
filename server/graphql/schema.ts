@@ -158,16 +158,16 @@ export const resolvers = {
       { id, status }: { id: string; status: string }
     ) => {
       return await db.updateDriverApplication(parseInt(id), {
-        backgroundCheckStatus: status,
-        backgroundCheckCompletedAt: new Date().toISOString(),
+        background_check_status: status,
+        background_check_completed_at: new Date().toISOString(),
       });
     },
   },
   DriverApplication: {
     id: (parent: DriverApplication) => parent.id.toString(),
     submittedAt: (parent: DriverApplication) =>
-      parent.submittedAt?.toISOString(),
+      parent.submitted_at,
     backgroundCheckCompletedAt: (parent: DriverApplication) =>
-      parent.backgroundCheckCompletedAt?.toISOString(),
+      parent.background_check_completed_at,
   },
 };

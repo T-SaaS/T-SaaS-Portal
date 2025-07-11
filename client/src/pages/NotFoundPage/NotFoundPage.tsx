@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/atoms/Button";
 
 export function NotFoundPage() {
-  return (
+  const navigate = useNavigate();
+  return (  
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
         <h1 className="text-6xl font-bold text-slate-900 mb-4">404</h1>
@@ -14,12 +15,7 @@ export function NotFoundPage() {
           deleted.
         </p>
         <div className="space-x-4">
-          <Link to="/apply">
-            <Button>Go to Application</Button>
-          </Link>
-          <Link to="/dashboard">
-            <Button variant="outline">Go to Dashboard</Button>
-          </Link>
+            <Button variant="outline" onClick={() => navigate(-1)}>Go Back</Button>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/atoms/Button";
 import {
   DropdownMenu,
@@ -17,9 +17,10 @@ import {
   User,
 } from "lucide-react";
 import { NavigationItem } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Applications", href: "/applications", icon: FileText },
   { name: "Drivers", href: "/drivers", icon: Users },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -27,6 +28,12 @@ const navigation: NavigationItem[] = [
 
 export function PrivateTemplate() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -74,31 +81,31 @@ export function PrivateTemplate() {
                   className="w-full justify-start text-left"
                 >
                   <User className="mr-2 h-4 w-4" />
-                  <span className="truncate">Admin User</span>
+                  <span className="truncate">{user?.email || "User"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      Admin User
+                      {user?.email || "User"}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      admin@example.com
+                      {user?.role || "User"}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+                  <span onClick={() => navigate("/profile")}>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
