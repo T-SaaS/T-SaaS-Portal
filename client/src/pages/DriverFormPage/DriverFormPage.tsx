@@ -14,11 +14,11 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-import { Button } from "@/atoms/Button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ProgressStepper } from "@/organisms/ProgressStepper";
-import { Input } from "@/atoms/Input";
-import { Label } from "@/atoms/Label";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { DriverFormValues } from "@/types";
+import type { InsertDriverApplication } from "@shared/schema";
 import { months, states, positions } from "@shared/utilities/globalConsts";
 import { loadTestData } from "@/utils/testData";
 
@@ -120,7 +120,6 @@ const stepTitles = [
   "Employment History",
   "Background Check",
 ];
-
 const stepLabels = [
   "Personal Info",
   "Contact & Address",
@@ -158,18 +157,100 @@ const getStepFields = (step: number): (keyof DriverFormValues)[] => {
       return [];
   }
 };
+type Address = {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  fromMonth: number;
+  fromYear: number;
+  toMonth: number;
+  toYear: number;
+};
+
+type Job = {
+  employerName: string;
+  positionHeld: string;
+  fromMonth: number;
+  fromYear: number;
+  toMonth: number;
+  toYear: number;
+};
+
+export type DriverFormValues = {
+  // Step 1: Personal Information
+  firstName: string;
+  lastName: string;
+  dob: string;
+
+  // Step 2: Contact & Address
+  phone: string;
+  email: string;
+  currentAddress: string;
+  currentCity: string;
+  currentState: string;
+  currentZip: string;
+  currentAddressFromMonth: number;
+  currentAddressFromYear: number;
+
+  // Step 3: License Information
+  licenseNumber: string;
+  licenseState: string;
+  positionAppliedFor: string;
+
+  // Step 4: Address History
+  addresses: Address[];
+
+  // Step 5: Employment History
+  jobs: Job[];
+
+  // Step 6: Background Check
+  socialSecurityNumber: string;
+  consentToBackgroundCheck: number; // 1 for checked, 0 for not checked
+};
 
 export function DriverFormPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [gapDetected, setGapDetected] = useState(false);
+  const [unemploymentPeriods, setUnemploymentPeriods] = useState<
+    Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>
+  >([]);
+  const [residencyGapDetected, setResidencyGapDetected] = useState(false);
+  const [residencyPeriods, setResidencyPeriods] = useState<
+    Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }>
+  >([]);
   const [needsAdditionalAddresses, setNeedsAdditionalAddresses] =
     useState(false);
-  const [gapDetected, setGapDetected] = useState(false);
-  const [residencyGapDetected, setResidencyGapDetected] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<DriverFormValues>({
-    resolver: yupResolver(stepSchemas[currentStep]),
-    mode: "onChange",
+    resolver: (values) => {
+      try {
+        stepSchemas[currentStep].validateSync(values, { abortEarly: false });
+        return {
+          values,
+          errors: {},
+        };
+      } catch (error: any) {
+        if (error.inner) {
+          const errors: any = {};
+          error.inner.forEach((err: any) => {
+            errors[err.path] = {
+              type: err.type,
+              message: err.message,
+            };
+          });
+          return {
+            values,
+            errors,
+          };
+        }
+        return {
+          values,
+          errors: {},
+        };
+      }
+    },
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -180,37 +261,23 @@ export function DriverFormPage() {
       currentCity: "",
       currentState: "",
       currentZip: "",
-      currentAddressFromMonth: 1,
+      currentAddressFromMonth: new Date().getMonth() + 1,
       currentAddressFromYear: new Date().getFullYear(),
       licenseNumber: "",
       licenseState: "",
       positionAppliedFor: "",
-      addresses: [
-        {
-          address: "",
-          city: "",
-          state: "",
-          zip: "",
-          fromMonth: 1,
-          fromYear: new Date().getFullYear(),
-          toMonth: 1,
-          toYear: new Date().getFullYear(),
-        },
-      ],
-      jobs: [
-        {
-          employerName: "",
-          positionHeld: "",
-          fromMonth: 1,
-          fromYear: new Date().getFullYear(),
-          toMonth: 1,
-          toYear: new Date().getFullYear(),
-        },
-      ],
+      addresses: [],
+      jobs: [],
       socialSecurityNumber: "",
       consentToBackgroundCheck: 0,
     },
+    mode: "onTouched",
   });
+
+  // Clear errors when step changes
+  useEffect(() => {
+    form.clearErrors();
+  }, [currentStep, form]);
 
   const {
     fields: addressFields,
@@ -231,162 +298,195 @@ export function DriverFormPage() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest("/api/driver-applications", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: async (data: InsertDriverApplication) => {
+      const response = await apiRequest(
+        "POST",
+        "/api/driver-applications",
+        data
+      );
+      return response.json();
+    },
     onSuccess: () => {
       toast({
-        title: "Application Submitted",
-        description: "Your driver application has been submitted successfully.",
+        title: "Application Submitted Successfully",
+        description:
+          "Your driver qualification application has been submitted for review.",
       });
       form.reset();
       setCurrentStep(0);
+      setGapDetected(false);
+      setUnemploymentPeriods([]);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Submission Failed",
         description:
-          error.message || "Failed to submit application. Please try again.",
+          error.message ||
+          "There was an error submitting your application. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Update resolver when step changes
-  useEffect(() => {
-    form.clearErrors();
-    const currentFields = getStepFields(currentStep);
-    const currentSchema = stepSchemas[currentStep];
-
-    // Create a custom resolver for the current step
-    const stepResolver = yupResolver(currentSchema);
-    form.resolver = stepResolver;
-  }, [currentStep, form]);
-
   const onNext = async () => {
-    const currentFields = getStepFields(currentStep);
-    const isValid = await form.trigger(currentFields);
-
-    if (isValid) {
+    const valid = await form.trigger();
+    if (valid) {
       if (currentStep === 1) {
         checkResidencyRequirements();
-      }
-      if (currentStep === 4) {
+      } else if (currentStep === 3 && needsAdditionalAddresses) {
+        checkForResidencyGaps();
+      } else if (currentStep === 3 && !needsAdditionalAddresses) {
+        // Skip to employment history
+        setCurrentStep(4);
+        form.clearErrors();
+      } else if (currentStep === 4) {
         checkForEmploymentGaps();
-      }
-      if (currentStep < stepTitles.length - 1) {
-        setCurrentStep(currentStep + 1);
+      } else if (currentStep === 5) {
+        // Final step - submit the form
+        onSubmit(form.getValues());
       } else {
-        // Submit the form
-        const data = form.getValues();
-        onSubmit(data);
+        setCurrentStep((prev) => prev + 1);
+        form.clearErrors();
       }
     }
   };
 
   const checkResidencyRequirements = () => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-    const currentAddressFromYear = form.getValues("currentAddressFromYear");
-    const currentAddressFromMonth = form.getValues("currentAddressFromMonth");
+    const currentAddressFrom = dayjs(
+      `${form.watch("currentAddressFromYear")}-${form.watch(
+        "currentAddressFromMonth"
+      )}-01`
+    );
+    const threeYearsAgo = dayjs().subtract(3, "year");
 
-    // Check if current address is less than 3 years
-    const yearsAtCurrentAddress =
-      currentYear -
-      currentAddressFromYear +
-      (currentMonth - currentAddressFromMonth) / 12;
-
-    if (yearsAtCurrentAddress < 3) {
+    if (currentAddressFrom.isAfter(threeYearsAgo)) {
       setNeedsAdditionalAddresses(true);
-      setResidencyGapDetected(true);
+    } else {
+      setNeedsAdditionalAddresses(false);
+      // Skip address history step if not needed
+      setCurrentStep(3);
+      form.clearErrors();
+      return;
     }
+
+    setCurrentStep((prev) => prev + 1);
+    form.clearErrors();
   };
 
   const checkForResidencyGaps = () => {
-    const addresses = form.getValues("addresses");
-    if (addresses.length < 2) return;
-
-    // Sort addresses by date
-    const sortedAddresses = [...addresses].sort((a, b) => {
-      const aDate = new Date(a.fromYear, a.fromMonth - 1);
-      const bDate = new Date(b.fromYear, b.fromMonth - 1);
-      return aDate.getTime() - bDate.getTime();
+    const currentAddressFrom = dayjs(
+      `${form.watch("currentAddressFromYear")}-${form.watch(
+        "currentAddressFromMonth"
+      )}-01`
+    );
+    const addresses = form.watch("addresses").sort((a, b) => {
+      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf("month");
+      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf("month");
+      return bDate.diff(aDate);
     });
 
-    // Check for gaps
-    for (let i = 0; i < sortedAddresses.length - 1; i++) {
-      const current = sortedAddresses[i];
-      const next = sortedAddresses[i + 1];
+    let gaps: Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }> = [];
+    let lastToDate = currentAddressFrom;
+    const threeYearsAgo = dayjs().subtract(3, "year");
 
-      const currentEndDate = new Date(current.toYear, current.toMonth - 1);
-      const nextStartDate = new Date(next.fromYear, next.fromMonth - 1);
+    addresses.forEach((address) => {
+      const addressTo = dayjs(`${address.toYear}-${address.toMonth}-01`).endOf(
+        "month"
+      );
+      const addressFrom = dayjs(
+        `${address.fromYear}-${address.fromMonth}-01`
+      ).startOf("month");
 
-      const gapInMonths =
-        (nextStartDate.getTime() - currentEndDate.getTime()) /
-        (1000 * 60 * 60 * 24 * 30);
-
-      if (gapInMonths > 1) {
-        setResidencyGapDetected(true);
-        return;
+      if (lastToDate.diff(addressTo, "month") > 1) {
+        gaps.push({
+          from: addressTo.add(1, "month"),
+          to: lastToDate.subtract(1, "month"),
+        });
       }
+      lastToDate = addressFrom;
+    });
+
+    // Check if we have covered the full 3 years
+    if (lastToDate.isAfter(threeYearsAgo)) {
+      gaps.push({
+        from: threeYearsAgo,
+        to: lastToDate.subtract(1, "month"),
+      });
     }
-    setResidencyGapDetected(false);
+
+    if (gaps.length > 0) {
+      setResidencyGapDetected(true);
+      setResidencyPeriods(gaps);
+    } else {
+      setResidencyGapDetected(false);
+      setCurrentStep((prev) => prev + 1);
+      form.clearErrors();
+    }
   };
 
   const checkForEmploymentGaps = () => {
-    const jobs = form.getValues("jobs");
-    if (jobs.length < 2) return;
-
-    // Sort jobs by date
-    const sortedJobs = [...jobs].sort((a, b) => {
-      const aDate = new Date(a.fromYear, a.fromMonth - 1);
-      const bDate = new Date(b.fromYear, b.fromMonth - 1);
-      return aDate.getTime() - bDate.getTime();
+    const jobs = form.watch("jobs").sort((a, b) => {
+      const aDate = dayjs(`${a.toYear}-${a.toMonth}-01`).endOf("month");
+      const bDate = dayjs(`${b.toYear}-${b.toMonth}-01`).endOf("month");
+      return bDate.diff(aDate);
     });
 
-    // Check for gaps
-    for (let i = 0; i < sortedJobs.length - 1; i++) {
-      const current = sortedJobs[i];
-      const next = sortedJobs[i + 1];
+    let gaps: Array<{ from: dayjs.Dayjs; to: dayjs.Dayjs }> = [];
+    const today = dayjs();
+    let lastToDate = today;
 
-      const currentEndDate = new Date(current.toYear, current.toMonth - 1);
-      const nextStartDate = new Date(next.fromYear, next.fromMonth - 1);
+    jobs.forEach((job) => {
+      const jobTo = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf("month");
+      const jobFrom = dayjs(`${job.fromYear}-${job.fromMonth}-01`).startOf(
+        "month"
+      );
 
-      const gapInMonths =
-        (nextStartDate.getTime() - currentEndDate.getTime()) /
-        (1000 * 60 * 60 * 24 * 30);
-
-      if (gapInMonths > 1) {
-        setGapDetected(true);
-        return;
+      if (lastToDate.diff(jobTo, "month") > 1) {
+        gaps.push({
+          from: jobTo.add(1, "month"),
+          to: lastToDate.subtract(1, "month"),
+        });
       }
+      lastToDate = jobFrom;
+    });
+
+    const totalMonths = calculateJobDuration(jobs);
+
+    if (gaps.length > 0 || totalMonths < 36) {
+      setGapDetected(true);
+      setUnemploymentPeriods(gaps);
+    } else {
+      setGapDetected(false);
+      onSubmit(form.getValues());
     }
-    setGapDetected(false);
   };
 
   const calculateJobDuration = (jobs: any[]) => {
-    return jobs.reduce((total, job) => {
-      const startDate = new Date(job.fromYear, job.fromMonth - 1);
-      const endDate = new Date(job.toYear, job.toMonth - 1);
-      const duration =
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
-      return total + duration;
-    }, 0);
+    let totalMonths = 0;
+    jobs.forEach((job) => {
+      const from = dayjs(`${job.fromYear}-${job.fromMonth}-01`);
+      const to = dayjs(`${job.toYear}-${job.toMonth}-01`).endOf("month");
+      totalMonths += to.diff(from, "month") + 1;
+    });
+    return totalMonths;
   };
 
   const onBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+    if (currentStep === 4 && !needsAdditionalAddresses) {
+      // Skip back to license info (step 2) if address history was skipped
+      setCurrentStep(2);
+    } else {
+      setCurrentStep((prev) => prev - 1);
     }
+    form.clearErrors();
   };
 
   const onSubmit = (data: any) => {
-    const formattedData = {
+    const formattedData: InsertDriverApplication = {
+      company_id: 1, // TODO: Get from context/params
       first_name: data.firstName,
       last_name: data.lastName,
-      date_of_birth: data.dob,
+      dob: data.dob,
       phone: data.phone,
       email: data.email,
       current_address: data.currentAddress,
@@ -422,8 +522,10 @@ export function DriverFormPage() {
     submitMutation.mutate(formattedData);
   };
 
+  const progressPercentage = ((currentStep + 1) / stepTitles.length) * 100;
+
   return (
-    <div className="py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-slate-50">
       <div className="max-w-4xl mx-auto">
         {/* Header Section */}
         <Card className="shadow-sm border-slate-200 mb-8">
@@ -515,12 +617,46 @@ export function DriverFormPage() {
         {/* Progress Indicator */}
         <Card className="shadow-sm border-slate-200 mb-8">
           <CardContent className="p-6">
-            <ProgressStepper
-              currentStep={currentStep}
-              totalSteps={stepTitles.length}
-              stepTitles={stepTitles}
-              stepLabels={stepLabels}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {stepTitles[currentStep]}
+              </h2>
+              <span className="text-sm text-slate-500">
+                Step {currentStep + 1} of {stepTitles.length}
+              </span>
+            </div>
+
+            <Progress value={progressPercentage} className="mb-6 h-3" />
+
+            <div className="flex items-start justify-between">
+              {stepTitles.map((_, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col items-center space-y-2"
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                      index <= currentStep
+                        ? "bg-blue-500 text-white"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {index < currentStep ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs text-center max-w-20 ${
+                      index <= currentStep ? "text-slate-600" : "text-slate-400"
+                    }`}
+                  >
+                    {stepLabels[index]}
+                  </span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -541,7 +677,7 @@ export function DriverFormPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            <Label required>First Name</Label>
+                            First Name <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -560,7 +696,7 @@ export function DriverFormPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            <Label required>Last Name</Label>
+                            Last Name <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -577,9 +713,10 @@ export function DriverFormPage() {
                       control={form.control}
                       name="dob"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-1">
                           <FormLabel>
-                            <Label required>Date of Birth</Label>
+                            Date of Birth{" "}
+                            <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
@@ -588,6 +725,980 @@ export function DriverFormPage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+                )}
+
+                {/* Step 2: Contact Information & Current Address */}
+                {currentStep === 1 && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Phone Number{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input placeholder="5551234567" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Email Address{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="john.smith@email.com"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">
+                        Current Address
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="currentAddress"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>
+                                Street Address{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="123 Main Street"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="currentCity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                City <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input placeholder="City" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="currentState"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                State <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select state" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {states.map((state) => (
+                                      <SelectItem
+                                        key={state.value}
+                                        value={state.value}
+                                      >
+                                        {state.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="currentZip"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                ZIP Code <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input placeholder="12345" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="currentAddressFromMonth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                Month Moved In{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Select
+                                  onValueChange={(value) =>
+                                    field.onChange(Number(value))
+                                  }
+                                  value={field.value?.toString()}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select month" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {months.map((month) => (
+                                      <SelectItem
+                                        key={month.value}
+                                        value={month.value.toString()}
+                                      >
+                                        {month.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="currentAddressFromYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                Year Moved In{" "}
+                                <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="2024"
+                                  min="1900"
+                                  max={new Date().getFullYear()}
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: License Information */}
+                {currentStep === 2 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="licenseNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            License Number{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input placeholder="D123456789" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="licenseState"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            License State{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select State" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {states.map((state) => (
+                                <SelectItem
+                                  key={state.value}
+                                  value={state.value}
+                                >
+                                  {state.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="positionAppliedFor"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>
+                            Position Applied For{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Position" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {positions.map((position) => (
+                                <SelectItem
+                                  key={position.value}
+                                  value={position.value}
+                                >
+                                  {position.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Step 4: Address History */}
+                {currentStep === 3 && needsAdditionalAddresses && (
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-800">
+                            Address History Required
+                          </h4>
+                          <p className="text-blue-700 text-sm mt-1">
+                            Since you've lived at your current address for less
+                            than 3 years, please provide your previous addresses
+                            to complete your 3-year residency history.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-slate-900">
+                        Address History
+                      </h3>
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          appendAddress({
+                            address: "",
+                            city: "",
+                            state: "",
+                            zip: "",
+                            fromMonth: 1,
+                            fromYear: new Date().getFullYear(),
+                            toMonth: 12,
+                            toYear: new Date().getFullYear(),
+                          })
+                        }
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Address
+                      </Button>
+                    </div>
+
+                    {addressFields.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="border border-slate-200 rounded-lg p-6 bg-slate-50"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium text-slate-900">
+                            Address {index + 1}
+                          </h4>
+                          {addressFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAddress(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.address`}
+                            render={({ field }) => (
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>Street Address</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="123 Main Street"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.city`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>City</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="San Francisco"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.state`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>State</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select State" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {states.map((state) => (
+                                      <SelectItem
+                                        key={state.value}
+                                        value={state.value}
+                                      >
+                                        {state.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.zip`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>ZIP Code</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="94102" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.fromMonth`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>From Date</FormLabel>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Month" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {months.map((month) => (
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
+                                          {month.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormField
+                                    control={form.control}
+                                    name={`addresses.${index}.fromYear`}
+                                    render={({ field: yearField }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="2020"
+                                          {...yearField}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`addresses.${index}.toMonth`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>To Date</FormLabel>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Month" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {months.map((month) => (
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
+                                          {month.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormField
+                                    control={form.control}
+                                    name={`addresses.${index}.toYear`}
+                                    render={({ field: yearField }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="2024"
+                                          {...yearField}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Address History Skipped Message */}
+                {currentStep === 3 && !needsAdditionalAddresses && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <div className="flex items-start space-x-3">
+                      <CheckCircle className="text-green-500 mt-1 h-5 w-5" />
+                      <div>
+                        <h4 className="font-medium text-green-800">
+                          Address History Complete
+                        </h4>
+                        <p className="text-green-700 text-sm mt-1">
+                          Since you've lived at your current address for 3 years
+                          or more, no additional address history is needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Residency Gap Detection Warning */}
+                {currentStep === 3 && residencyGapDetected && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="text-amber-500 mt-1 h-5 w-5" />
+                      <div>
+                        <h4 className="font-medium text-amber-800">
+                          Residency Gap Detected
+                        </h4>
+                        <p className="text-amber-700 text-sm mt-1">
+                          We detected gaps in your 3-year residency history.
+                          Please add additional addresses to cover these
+                          periods.
+                        </p>
+                        {residencyPeriods.map((gap, idx) => (
+                          <p key={idx} className="text-amber-700 text-sm">
+                            Gap between {gap.from.format("MM/YYYY")} and{" "}
+                            {gap.to.format("MM/YYYY")}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 5: Employment History */}
+                {currentStep === 4 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-slate-900">
+                        Employment History
+                      </h3>
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          appendJob({
+                            employerName: "",
+                            positionHeld: "",
+                            fromMonth: 1,
+                            fromYear: new Date().getFullYear(),
+                            toMonth: 12,
+                            toYear: new Date().getFullYear(),
+                          })
+                        }
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Job
+                      </Button>
+                    </div>
+
+                    {gapDetected && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <AlertTriangle className="text-amber-500 mt-1 h-5 w-5" />
+                          <div>
+                            <h4 className="font-medium text-amber-800">
+                              Employment Gap Detected
+                            </h4>
+                            <p className="text-amber-700 text-sm mt-1">
+                              We detected gaps in your employment history.
+                              Please add additional jobs or explain unemployment
+                              periods to meet the 36-month requirement.
+                            </p>
+                            {unemploymentPeriods.map((gap, idx) => (
+                              <p key={idx} className="text-amber-700 text-sm">
+                                Gap between {gap.from.format("MM/YYYY")} and{" "}
+                                {gap.to.format("MM/YYYY")}
+                              </p>
+                            ))}
+                            <Button
+                              type="button"
+                              className="mt-2 bg-amber-600 hover:bg-amber-700"
+                              onClick={() => {
+                                setGapDetected(false);
+                                setCurrentStep(5); // Move to background check step
+                                form.clearErrors();
+                              }}
+                            >
+                              I Was Unemployed During These Periods
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {jobFields.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="border border-slate-200 rounded-lg p-6 bg-slate-50"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium text-slate-900">
+                            Job {index + 1}
+                          </h4>
+                          {jobFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeJob(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name={`jobs.${index}.employerName`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Employer Name</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="ABC Transportation"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`jobs.${index}.positionHeld`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Position Held</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Delivery Driver"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`jobs.${index}.fromMonth`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>From Date</FormLabel>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Month" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {months.map((month) => (
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
+                                          {month.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormField
+                                    control={form.control}
+                                    name={`jobs.${index}.fromYear`}
+                                    render={({ field: yearField }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="2021"
+                                          {...yearField}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`jobs.${index}.toMonth`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>To Date</FormLabel>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Select
+                                    onValueChange={(value) =>
+                                      field.onChange(Number(value))
+                                    }
+                                    defaultValue={field.value?.toString()}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Month" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {months.map((month) => (
+                                        <SelectItem
+                                          key={month.value}
+                                          value={month.value.toString()}
+                                        >
+                                          {month.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormField
+                                    control={form.control}
+                                    name={`jobs.${index}.toYear`}
+                                    render={({ field: yearField }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="2024"
+                                          {...yearField}
+                                          onChange={(e) =>
+                                            yearField.onChange(
+                                              Number(e.target.value)
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Step 6: Background Check */}
+                {currentStep === 5 && (
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-800">
+                            Background Check Authorization
+                          </h4>
+                          <p className="text-blue-700 text-sm mt-1">
+                            To complete your driver application, we need to
+                            perform a comprehensive background check including
+                            criminal history, driving record, and employment
+                            verification.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="socialSecurityNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Social Security Number{" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="123-45-6789"
+                                {...field}
+                                onChange={(e) => {
+                                  // Auto-format SSN with dashes
+                                  let value = e.target.value.replace(/\D/g, "");
+                                  if (value.length >= 6) {
+                                    value = value.replace(
+                                      /(\d{3})(\d{2})(\d{4})/,
+                                      "$1-$2-$3"
+                                    );
+                                  } else if (value.length >= 4) {
+                                    value = value.replace(
+                                      /(\d{3})(\d{2})/,
+                                      "$1-$2"
+                                    );
+                                  }
+                                  field.onChange(value);
+                                }}
+                                maxLength={11}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="bg-amber-100 p-1 rounded-full">
+                            <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-amber-800 mb-2">
+                              Background Check Details
+                            </h4>
+                            <div className="text-amber-700 text-sm space-y-1">
+                              <p>
+                                • <strong>Criminal History Check:</strong>{" "}
+                                National and local criminal records
+                              </p>
+                              <p>
+                                • <strong>Driving Record:</strong> MVR check for
+                                violations, suspensions, and accidents
+                              </p>
+                              <p>
+                                • <strong>Employment Verification:</strong>{" "}
+                                Confirmation of previous employment history
+                              </p>
+                              <p>
+                                • <strong>Drug Screening:</strong> DOT-compliant
+                                drug testing (scheduled separately)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="consentToBackgroundCheck"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="border border-slate-200 rounded-lg p-6 bg-slate-50">
+                              <div className="flex items-start space-x-3">
+                                <FormControl>
+                                  <input
+                                    type="checkbox"
+                                    checked={field.value === 1}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.checked ? 1 : 0)
+                                    }
+                                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                  />
+                                </FormControl>
+                                <div className="flex-1">
+                                  <FormLabel className="text-sm font-medium text-slate-900">
+                                    Background Check Consent{" "}
+                                    <span className="text-red-500">*</span>
+                                  </FormLabel>
+                                  <p className="text-sm text-slate-600 mt-1">
+                                    I hereby authorize the company to conduct a
+                                    comprehensive background check including but
+                                    not limited to: criminal history, driving
+                                    record, employment verification, and drug
+                                    screening. I understand that this
+                                    information will be used to determine my
+                                    eligibility for employment as a driver. I
+                                    certify that all information provided is
+                                    true and accurate to the best of my
+                                    knowledge.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="bg-green-100 p-1 rounded-full">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-green-800">
+                              Next Steps
+                            </h4>
+                            <p className="text-green-700 text-sm mt-1">
+                              After submitting your application, we'll initiate
+                              the background check process. You'll receive
+                              updates via email and can track the status in your
+                              applicant portal.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

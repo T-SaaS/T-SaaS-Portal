@@ -20,6 +20,8 @@ export interface FormFieldProps<T extends FieldValues> {
   className?: string;
   disabled?: boolean;
   autoComplete?: string;
+  min?: number;
+  max?: number;
 }
 
 export function FormField<T extends FieldValues>({
@@ -32,6 +34,8 @@ export function FormField<T extends FieldValues>({
   className,
   disabled = false,
   autoComplete,
+  min,
+  max,
 }: FormFieldProps<T>) {
   return (
     <ShadcnFormField
@@ -50,6 +54,8 @@ export function FormField<T extends FieldValues>({
               autoComplete={autoComplete}
               error={!!fieldState.error}
               {...field}
+              min={min}
+              max={max}
             />
           </FormControl>
           <FormMessage />

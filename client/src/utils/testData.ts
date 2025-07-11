@@ -1,4 +1,4 @@
-import type { DriverFormValues } from "@/pages/driver-form";
+import type { DriverFormValues } from "@/types/driverApplicationForm";
 
 export const testDriverData: DriverFormValues = {
   // Step 1: Personal Information
@@ -19,7 +19,7 @@ export const testDriverData: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D123456789",
   licenseState: "CA",
-  positionAppliedFor: "CDL-A",
+  positionAppliedFor: "regional-driver",
 
   // Step 4: Address History
   addresses: [
@@ -50,6 +50,8 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "ABC Transportation",
       positionHeld: "Delivery Driver",
+      businessName: "ABC Transportation",
+      companyEmail: "abc@transportation.com",
       fromMonth: 1,
       fromYear: 2021,
       toMonth: 12,
@@ -58,6 +60,8 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "XYZ Logistics",
       positionHeld: "Warehouse Associate",
+      businessName: "XYZ Logistics",
+      companyEmail: "xyz@logistics.com",
       fromMonth: 3,
       fromYear: 2019,
       toMonth: 12,
@@ -66,6 +70,8 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "Fast Freight Inc",
       positionHeld: "Truck Driver",
+      businessName: "Fast Freight Inc",
+      companyEmail: "fast@freight.com",
       fromMonth: 1,
       fromYear: 2017,
       toMonth: 2,
@@ -98,7 +104,7 @@ export const testDriverDataMinimal: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D987654321",
   licenseState: "NY",
-  positionAppliedFor: "CDL-B",
+  positionAppliedFor: "delivery-driver",
 
   // Step 4: Address History (empty since current address is 4+ years)
   addresses: [],
@@ -106,8 +112,10 @@ export const testDriverDataMinimal: DriverFormValues = {
   // Step 5: Employment History
   jobs: [
     {
-      employerName: "Metro Delivery",
+      employerName: "Metro Delivery", 
       positionHeld: "Driver",
+      businessName: "Metro Delivery",
+      companyEmail: "metro@delivery.com",
       fromMonth: 1,
       fromYear: 2020,
       toMonth: 12,
@@ -140,7 +148,7 @@ export const testDriverDataWithGaps: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D456789123",
   licenseState: "IL",
-  positionAppliedFor: "CDL-A",
+  positionAppliedFor: "local-driver",
 
   // Step 4: Address History
   addresses: [
@@ -161,6 +169,8 @@ export const testDriverDataWithGaps: DriverFormValues = {
     {
       employerName: "City Transport",
       positionHeld: "Driver",
+      businessName: "City Transport",
+      companyEmail: "city@transport.com",
       fromMonth: 1,
       fromYear: 2023,
       toMonth: 6,
@@ -169,6 +179,8 @@ export const testDriverDataWithGaps: DriverFormValues = {
     {
       employerName: "Regional Hauling",
       positionHeld: "Truck Driver",
+      businessName: "Regional Hauling",
+      companyEmail: "regional@hauling.com",
       fromMonth: 1,
       fromYear: 2021,
       toMonth: 8,

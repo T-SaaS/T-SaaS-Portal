@@ -148,11 +148,22 @@ export interface Company {
   id: string;
   name: string;
   domain: string;
+  slug: string; // URL-friendly identifier
   settings: CompanySettings;
 }
 
+// Company Response Types
+export interface CompanyResponse {
+  data: Company;
+  success: boolean;
+  message: string;
+}
+
+// Company Settings Types
 export interface CompanySettings {
   allowExternalApplications: boolean;
   requireBackgroundCheck: boolean;
   customFields: Record<string, any>;
+  supportEmail?: string;
+  welcomeMessage?: string;
 }
