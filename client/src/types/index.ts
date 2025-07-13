@@ -1,67 +1,22 @@
-// Form Types
-export interface Address {
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  fromMonth: number;
-  fromYear: number;
-  toMonth: number;
-  toYear: number;
-}
+// Import shared types from the shared schema
+import type {
+  Address,
+  BackgroundCheckResult,
+  Job,
+  Company as SharedCompany,
+} from "@shared/schema";
 
-export interface Job {
-  employerName: string;
-  positionHeld: string;
-  fromMonth: number;
-  fromYear: number;
-  toMonth: number;
-  toYear: number;
-}
+// Re-export shared types for convenience
+export type { Address, BackgroundCheckResult, Job };
 
-export interface DriverFormValues {
-  // Step 1: Personal Information
-  firstName: string;
-  lastName: string;
-  dob: string;
-
-  // Step 2: Contact & Address
-  phone: string;
-  email: string;
-  currentAddress: string;
-  currentCity: string;
-  currentState: string;
-  currentZip: string;
-  currentAddressFromMonth: number;
-  currentAddressFromYear: number;
-
-  // Step 3: License Information
-  licenseNumber: string;
-  licenseState: string;
-  positionAppliedFor: string;
-
-  // Step 4: Address History
-  addresses: Address[];
-
-  // Step 5: Employment History
-  jobs: Job[];
-
-  // Step 6: Background Check
-  socialSecurityNumber: string;
-  consentToBackgroundCheck: number; // 1 for checked, 0 for not checked
-}
-
-// Application Types
-export interface DriverApplication {
+// Client-specific DriverApplication type (with string ID for client usage)
+export interface DriverApplication
+  extends Omit<
+    import("@shared/schema").DriverApplication,
+    "id" | "company_id"
+  > {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  status: "pending" | "approved" | "rejected";
-  submittedAt: string;
-  company: string;
-  // Add other fields as needed
+  company_id: string;
 }
 
 // Navigation Types
@@ -90,7 +45,7 @@ export interface ApiResponse<T> {
 export interface FormStep {
   title: string;
   label: string;
-  fields: (keyof DriverFormValues)[];
+  fields: string[];
 }
 
 // UI Component Props
@@ -143,12 +98,9 @@ export interface User {
   companyId?: string;
 }
 
-// Company Types
-export interface Company {
-  id: string;
-  name: string;
-  domain: string;
-  slug: string; // URL-friendly identifier
+// Company Types - extending shared company type for client-specific needs
+export interface Company extends Omit<SharedCompany, "id"> {
+  id: string; // Override to be string instead of number for client usage
   settings: CompanySettings;
 }
 

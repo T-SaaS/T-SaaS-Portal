@@ -1,7 +1,7 @@
 {
-  "watch": ["server/", "shared/"],
+  "watch": ["server/", "shared/","client/"],
   "ext": "ts,js,json",
-  "ignore": ["node_modules/", "client/", "dist/", "*.test.ts", "*.spec.ts"],
+  "ignore": ["node_modules/", "dist/", "*.test.ts", "*.spec.ts","client/.config"],
   "exec": "tsx server/index.ts",
   "env": {
     "NODE_ENV": "development"

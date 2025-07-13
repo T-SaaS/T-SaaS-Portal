@@ -21,7 +21,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   app.use("/graphql", json(), expressMiddleware(server));
 
   // Submit driver application
-  app.post("/api/driver-applications", async (req, res) => {
+  app.post("/api/v1/driver-applications", async (req, res) => {
     try {
       // console.log("Received driver application request:", {
       //   body: req.body,
@@ -103,7 +103,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Get all driver applications
-  app.get("/api/driver-applications", async (req, res) => {
+  app.get("/api/v1/driver-applications", async (req, res) => {
     try {
       console.log("Fetching all driver applications...");
 
@@ -131,10 +131,10 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Get driver application by ID
-  app.get("/api/driver-applications/:id", async (req, res) => {
+  app.get("/api/v1/driver-applications/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-
+      
       if (isNaN(id) || id <= 0) {
         return res.status(400).json({
           success: false,
@@ -243,8 +243,36 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Get all companies
+  app.get("/api/v1/companies", async (req, res) => {
+    try {
+      console.log("Fetching all companies...");
+
+      const companies = await db.getAllCompanies();
+      console.log(`Retrieved ${companies.length} companies`);
+
+      res.json({
+        success: true,
+        message: `Retrieved ${companies.length} companies`,
+        data: companies,
+      });
+    } catch (error) {
+      console.error("Error in GET /api/v1/companies:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve companies",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Get company by slug
-  app.get("/api/companies/slug/:slug", async (req, res) => {
+  app.get("/api/v1/companies/slug/:slug", async (req, res) => {
     try {
       const { slug } = req.params;
 
@@ -293,7 +321,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Get company by ID (for internal use)
-  app.get("/api/companies/:id", async (req, res) => {
+  app.get("/api/v1/companies/:id", async (req, res) => {
     try {
       const { id } = req.params;
 

@@ -120,4 +120,14 @@ export const db = {
     }
     return company;
   },
+
+  async getAllCompanies() {
+    const { data: companies, error } = await supabase
+      .from("companies")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error) throw error;
+    return companies;
+  },
 };
