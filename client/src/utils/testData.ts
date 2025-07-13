@@ -19,6 +19,8 @@ export const testDriverData: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D123456789",
   licenseState: "CA",
+  licenseExpirationDate: "2025-06-15",
+  medicalCardExpirationDate: "2025-06-15",
   positionAppliedFor: "regional-driver",
 
   // Step 4: Address History
@@ -104,6 +106,8 @@ export const testDriverDataMinimal: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D987654321",
   licenseState: "NY",
+  licenseExpirationDate: "2025-06-15",
+  medicalCardExpirationDate: "2025-06-15",
   positionAppliedFor: "delivery-driver",
 
   // Step 4: Address History (empty since current address is 4+ years)
@@ -148,6 +152,8 @@ export const testDriverDataWithGaps: DriverFormValues = {
   // Step 3: License Information
   licenseNumber: "D456789123",
   licenseState: "IL",
+  licenseExpirationDate: "2025-06-15",
+  medicalCardExpirationDate: "2025-06-15",
   positionAppliedFor: "local-driver",
 
   // Step 4: Address History
