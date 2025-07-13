@@ -19,6 +19,7 @@ import {
 import { NavigationItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
+
 const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Applications", href: "/applications", icon: FileText },

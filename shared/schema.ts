@@ -16,6 +16,7 @@ export interface DriverApplication {
   company_id: number;
   first_name: string;
   last_name: string;
+  status: string;
   dob: string;
   phone: string;
   email: string;
@@ -53,6 +54,8 @@ export const addressSchema = z.object({
 export const jobSchema = z.object({
   employerName: z.string().min(1, "Employer Name is required"),
   positionHeld: z.string().min(1, "Position Held is required"),
+  businessName: z.string().optional(),
+  companyEmail: z.string().email().optional(),
   fromMonth: z.number().min(1).max(12),
   fromYear: z.number().min(1900),
   toMonth: z.number().min(1).max(12),

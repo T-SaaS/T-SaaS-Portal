@@ -1,24 +1,5 @@
-export type Address = {
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  fromMonth: number;
-  fromYear: number;
-  toMonth: number;
-  toYear: number;
-};
-
-export type Job = {
-  employerName: string;
-  positionHeld: string;
-  businessName: string;
-  companyEmail: string;
-  fromMonth: number;
-  fromYear: number;
-  toMonth: number;
-  toYear: number;
-};
+// Import shared types
+import type { Address, Job } from "@shared/schema";
 
 export type GapPeriod = {
   from: string; // dayjs.Dayjs formatted string
@@ -26,6 +7,7 @@ export type GapPeriod = {
   type?: "gap" | "overlap"; // Optional type to distinguish between gaps and overlaps
 };
 
+// Client-specific form values type (camelCase for form usage)
 export type DriverFormValues = {
   // Step 1: Personal Information
   firstName: string;

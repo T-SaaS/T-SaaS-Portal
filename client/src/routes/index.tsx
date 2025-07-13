@@ -5,9 +5,9 @@ import { PrivateTemplate } from "@/templates/PrivateTemplate";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import {
-  DriverFormPage,
   DashboardPage,
   ApplicationsPage,
+  ApplicationDetailsPage,
   NotFoundPage,
 } from "@/pages";
 import { DriverFormPageRefactored } from "@/pages/DriverFormPage/DriverFormPageRefactored";
@@ -52,7 +52,7 @@ const privateRoutes = [
   },
   {
     path: "/applications/:id",
-    element: <ApplicationsPage />,
+    element: <ApplicationDetailsPage />,
     title: "Application Details",
   },
 ];
