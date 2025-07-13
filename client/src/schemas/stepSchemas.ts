@@ -20,7 +20,13 @@ export const getStepFields = (step: number): (keyof DriverFormValues)[] => {
         "currentAddressFromYear",
       ];
     case 2:
-      return ["licenseNumber", "licenseState", "positionAppliedFor"];
+      return [
+        "licenseNumber",
+        "licenseState",
+        "licenseExpirationDate",
+        "medicalCardExpirationDate",
+        "positionAppliedFor",
+      ];
     case 3:
       return ["addresses"];
     case 4:

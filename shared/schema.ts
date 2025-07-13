@@ -28,6 +28,8 @@ export interface DriverApplication {
   current_address_from_year: number;
   license_number: string;
   license_state: string;
+  license_expiration_date: string;
+  medical_card_expiration_date: string;
   position_applied_for: string;
   addresses: Address[];
   jobs: Job[];

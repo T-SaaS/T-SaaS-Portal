@@ -17,7 +17,12 @@ export const stepSchemas = [
     currentAddress: Yup.string().required("Current Address is required"),
     currentCity: Yup.string().required("Current City is required"),
     currentState: Yup.string().required("Current State is required"),
-    currentZip: Yup.string().required("Current ZIP code is required"),
+    currentZip: Yup.string()
+      .required("Current ZIP code is required")
+      .matches(
+        /^\d{5}(-\d{4})?$/,
+        "ZIP code must be in format 12345 or 12345-6789"
+      ),
     currentAddressFromMonth: Yup.number()
       .min(1)
       .max(12)
@@ -31,6 +36,28 @@ export const stepSchemas = [
   Yup.object().shape({
     licenseNumber: Yup.string().required("License Number is required"),
     licenseState: Yup.string().required("License State is required"),
+    licenseExpirationDate: Yup.string()
+      .required("License Expiration Date is required")
+      .test("future-date", "License must not be expired", function (value) {
+        if (!value) return false;
+        const expirationDate = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+        return expirationDate >= today;
+      }),
+    medicalCardExpirationDate: Yup.string()
+      .required("Medical Card Expiration Date is required")
+      .test(
+        "future-date",
+        "Medical Card must not be expired",
+        function (value) {
+          if (!value) return false;
+          const expirationDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day
+          return expirationDate >= today;
+        }
+      ),
     positionAppliedFor: Yup.string().required("Position is required"),
   }),
 
@@ -41,7 +68,12 @@ export const stepSchemas = [
         address: Yup.string().required("Address is required"),
         city: Yup.string().required("City is required"),
         state: Yup.string().required("State is required"),
-        zip: Yup.string().required("ZIP code is required"),
+        zip: Yup.string()
+          .required("ZIP code is required")
+          .matches(
+            /^\d{5}(-\d{4})?$/,
+            "ZIP code must be in format 12345 or 12345-6789"
+          ),
         fromMonth: Yup.number()
           .min(1)
           .max(12)
@@ -97,7 +129,12 @@ export const completeFormSchema = Yup.object().shape({
   currentAddress: Yup.string().required("Current Address is required"),
   currentCity: Yup.string().required("Current City is required"),
   currentState: Yup.string().required("Current State is required"),
-  currentZip: Yup.string().required("Current ZIP code is required"),
+  currentZip: Yup.string()
+    .required("Current ZIP code is required")
+    .matches(
+      /^\d{5}(-\d{4})?$/,
+      "ZIP code must be in format 12345 or 12345-6789"
+    ),
   currentAddressFromMonth: Yup.number()
     .min(1)
     .max(12)
@@ -109,6 +146,24 @@ export const completeFormSchema = Yup.object().shape({
   // Step 3: License Information
   licenseNumber: Yup.string().required("License Number is required"),
   licenseState: Yup.string().required("License State is required"),
+  licenseExpirationDate: Yup.string()
+    .required("License Expiration Date is required")
+    .test("future-date", "License must not be expired", function (value) {
+      if (!value) return false;
+      const expirationDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      return expirationDate >= today;
+    }),
+  medicalCardExpirationDate: Yup.string()
+    .required("Medical Card Expiration Date is required")
+    .test("future-date", "Medical Card must not be expired", function (value) {
+      if (!value) return false;
+      const expirationDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      return expirationDate >= today;
+    }),
   positionAppliedFor: Yup.string().required("Position is required"),
 
   // Step 4: Address History

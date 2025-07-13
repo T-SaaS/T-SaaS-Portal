@@ -28,14 +28,11 @@ export function DriverFormPageRefactored() {
 
   const {
     currentStep,
-    totalSteps,
     needsAdditionalAddresses,
     gapDetected,
     residencyGapDetected,
     isFirstStep,
     isLastStep,
-    canGoNext,
-    canGoBack,
     goToNextStep,
     goToPreviousStep,
     setNeedsAdditionalAddresses,
@@ -44,14 +41,10 @@ export function DriverFormPageRefactored() {
     resetSteps,
   } = useFormSteps();
 
-  const { form, validateCurrentStep, resetForm } =
-    useDriverApplicationForm(currentStep);
+  const { form, validateCurrentStep } = useDriverApplicationForm(currentStep);
   const { submitForm, isSubmitting } = useFormSubmission();
-  const {
-    checkResidencyRequirements,
-    checkForResidencyGaps,
-    checkForEmploymentGaps,
-  } = useGapDetection();
+  const { checkResidencyRequirements, checkForEmploymentGaps } =
+    useGapDetection();
 
   const onNext = async () => {
     const valid = await validateCurrentStep();
@@ -123,10 +116,6 @@ export function DriverFormPageRefactored() {
     if (type === "full" || type === "gaps") {
       setNeedsAdditionalAddresses(true);
     }
-    // if (type === "gaps") {
-    //   setGapDetected(true);
-    //   setResidencyGapDetected(true);
-    // }
     toast({
       title: "Test Data Loaded",
       description: `${type} test data has been loaded into the form.`,

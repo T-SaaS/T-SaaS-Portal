@@ -27,6 +27,8 @@ export type DriverFormValues = {
   // Step 3: License Information
   licenseNumber: string;
   licenseState: string;
+  licenseExpirationDate: string;
+  medicalCardExpirationDate: string;
   positionAppliedFor: string;
 
   // Step 4: Address History
