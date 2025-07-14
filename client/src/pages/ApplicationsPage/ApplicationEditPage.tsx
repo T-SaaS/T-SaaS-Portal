@@ -37,7 +37,7 @@ export function ApplicationEditPage() {
     background_check_completed_at: "",
     addresses: [],
     jobs: [],
-    company_id: "",
+    company_id: "", // Client-side uses string
     status: "",
     submitted_at: "",
     consent_to_background_check: 0,
@@ -80,7 +80,7 @@ export function ApplicationEditPage() {
         jobs: applicationData.jobs || [],
         addresses: applicationData.addresses || [],
         // Load missing fields
-        company_id: applicationData.company_id || "",
+        company_id: applicationData.company_id?.toString() || "",
         status: applicationData.status || "",
         submitted_at: applicationData.submitted_at || "",
         background_check_completed_at:
@@ -181,17 +181,46 @@ export function ApplicationEditPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/v1/applications/${id}`, {
+      // The server expects ALL fields from insertDriverApplicationSchema
+      // We need to send a complete object with the current application data
+      const serverData = {
+        // Required fields from insertDriverApplicationSchema
+        company_id: parseInt(
+          applicationData?.company_id?.toString() || "0",
+          10
+        ),
+        first_name: formData.first_name || "",
+        last_name: formData.last_name || "",
+        dob: formData.dob || "",
+        phone: formData.phone || "",
+        email: formData.email || "",
+        current_address: formData.current_address || "",
+        current_city: formData.current_city || "",
+        current_state: formData.current_state || "",
+        current_zip: formData.current_zip || "",
+        current_address_from_month: formData.current_address_from_month || 1,
+        current_address_from_year:
+          formData.current_address_from_year || new Date().getFullYear(),
+        license_number: formData.license_number || "",
+        license_state: formData.license_state || "",
+        position_applied_for: formData.position_applied_for || "",
+        addresses: formData.addresses || [],
+        jobs: formData.jobs || [],
+        social_security_number:
+          formData.social_security_number || "000-00-0000",
+        consent_to_background_check: formData.consent_to_background_check
+          ? 1
+          : 0,
+      };
+
+      console.log("Sending update data:", serverData);
+
+      const response = await fetch(`/api/v1/driver-applications/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          consent_to_background_check: formData.consent_to_background_check
-            ? 1
-            : 0,
-        }),
+        body: JSON.stringify(serverData),
       });
 
       if (!response.ok) {
@@ -254,13 +283,13 @@ export function ApplicationEditPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         <Button type="submit" disabled={isLoading}>
           <Save className="mr-2 h-4 w-4" />
           {isLoading ? "Saving..." : "Save Changes"}
         </Button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Personal Information */}
         <Card>
           <CardHeader>

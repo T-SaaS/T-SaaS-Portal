@@ -181,6 +181,28 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Update driver application
+  app.put("/api/v1/driver-applications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertDriverApplicationSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
+      const application = await db.updateDriverApplication(id, validatedData);
+      res.json({
+        success: true,
+        message: "Application updated successfully",
+        data: application,
+      });
+    } catch (error) {
+      console.error(`Error in PUT /api/v1/driver-applications/${req.params.id}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        id: req.params.id,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // Get background check status
   app.get("/api/driver-applications/:id/background-check", async (req, res) => {
     try {
