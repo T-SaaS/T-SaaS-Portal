@@ -46,6 +46,7 @@ export const useDriverApplications = () => {
           license_number: app.license_number,
           license_state: app.license_state,
           license_expiration_date: app.license_expiration_date,
+          medical_card_expiration_date: app.medical_card_expiration_date,
           addresses: app.addresses,
           jobs: app.jobs,
           social_security_number: app.social_security_number,
@@ -126,6 +127,7 @@ export const useDriverApplication = (id: string) => {
           license_number: app.license_number,
           license_state: app.license_state,
           license_expiration_date: app.license_expiration_date,
+          medical_card_expiration_date: app.medical_card_expiration_date,
           addresses: app.addresses,
           jobs: app.jobs,
           social_security_number: app.social_security_number,
@@ -148,8 +150,7 @@ export const useDriverApplication = (id: string) => {
     fetchApplication();
   }, [id]);
   
-  console.log(application);
-  return {
+   return {
     application,
     loading,
     error,

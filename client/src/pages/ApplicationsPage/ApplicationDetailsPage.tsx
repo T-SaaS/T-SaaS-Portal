@@ -1,13 +1,14 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { ApplicationDetailsView } from "@/organisms/ApplicationDetailsView";
 import { ApplicationNotFound } from "./ApplicationNotFound";
-import { Company, DriverApplication } from "@/types";
+import { Company } from "@/types";
 import { useDriverApplication } from "@/hooks/useDriverApplications";
 import { useCompany } from "@/hooks/useCompany";
 import { formatDate } from "@/utils/dateUtils";
 
 export function ApplicationDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   // Fetch single application
   const { application: applicationData, loading: applicationLoading } =
@@ -17,39 +18,6 @@ export function ApplicationDetailsPage() {
   const { company: companyData } = useCompany({
     companyId: applicationData?.company_id,
   });
-
-  // Transform API data to match our DriverApplication type
-  const transformApplication = (app: any): DriverApplication => ({
-    id: app.id,
-    first_name: app.first_name,
-    last_name: app.last_name,
-    email: app.email,
-    phone: app.phone,
-    company_id: app.company_id,
-    status: app.status || "pending",
-    submitted_at: app.submitted_at,
-    dob: app.dob,
-    position_applied_for: app.position_applied_for,
-    background_check_status: app.background_check_status,
-    current_address: app.current_address,
-    current_city: app.current_city,
-    current_state: app.current_state,
-    current_zip: app.current_zip,
-    current_address_from_month: app.current_address_from_month,
-    current_address_from_year: app.current_address_from_year,
-    license_number: app.license_number,
-    license_state: app.license_state,
-    addresses: app.addresses || [],
-    jobs: app.jobs || [],
-    social_security_number: app.social_security_number,
-    consent_to_background_check: app.consent_to_background_check,
-    background_check_results: app.background_check_results,
-    background_check_completed_at: app.background_check_completed_at,
-  });
-
-  const application = applicationData
-    ? transformApplication(applicationData)
-    : null;
 
   const handleApprove = (id: string) => {
     console.log("Approve application:", id);
@@ -66,6 +34,10 @@ export function ApplicationDetailsPage() {
     // Add your export logic here
   };
 
+  const handleEdit = () => {
+    navigate(`/applications/${id}/edit`);
+  };
+
   // Handle loading state
   if (applicationLoading) {
     return (
@@ -76,20 +48,23 @@ export function ApplicationDetailsPage() {
       </div>
     );
   }
-  console.log(application);
   // Handle not found state
-  if (!application) {
+  if (!applicationData) {
     return <ApplicationNotFound />;
   }
 
   return (
     <ApplicationDetailsView
-      application={application}
+      application={applicationData}
       company={companyData as Company}
       formatDate={formatDate}
-      onExport={() => handleExport(application.id)}
-      onApprove={() => handleApprove(application.id)}
-      onReject={() => handleReject(application.id)}
+      isEditing={false} // No inline editing, always false
+      onExport={() => handleExport(applicationData.id)}
+      onApprove={() => handleApprove(applicationData.id)}
+      onReject={() => handleReject(applicationData.id)}
+      onEdit={handleEdit}
+      onSave={() => {}} // No save logic
+      onCancel={() => {}} // No cancel logic
     />
   );
 }

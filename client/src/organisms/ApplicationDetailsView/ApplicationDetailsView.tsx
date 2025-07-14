@@ -6,6 +6,8 @@ import {
   Download,
   CheckCircle,
   XCircle,
+  Pencil,
+  Save,
   User,
   Phone,
   FileText,
@@ -23,18 +25,26 @@ export interface ApplicationDetailsViewProps {
   application: DriverApplication;
   company: Company;
   formatDate: (dateString: string) => string;
+  isEditing?: boolean;
   onExport?: () => void;
   onApprove?: () => void;
   onReject?: () => void;
+  onEdit?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }
 
 export function ApplicationDetailsView({
   application,
   company,
   formatDate,
+  isEditing = false,
   onExport,
   onApprove,
   onReject,
+  onEdit,
+  onSave,
+  onCancel,
 }: ApplicationDetailsViewProps) {
   const formatDateRange = (
     fromMonth: number,
@@ -121,21 +131,37 @@ export function ApplicationDetailsView({
         title="Application Details"
         description="View and manage driver application"
       >
-        <ActionButton icon={Download} variant="outline" onClick={onExport}>
-          Export
-        </ActionButton>
-        {application.status === "pending" && (
+        {isEditing ? (
           <>
-            <ActionButton
-              icon={XCircle}
-              variant="outline"
-              className="text-red-600 hover:text-red-700"
-              onClick={onReject}
-            >
-              Reject
+            <ActionButton icon={Save} onClick={onSave}>
+              Save Changes
             </ActionButton>
-            <ActionButton icon={CheckCircle} onClick={onApprove}>
-              Approve
+            <ActionButton icon={XCircle} variant="outline" onClick={onCancel}>
+              Cancel
+            </ActionButton>
+          </>
+        ) : (
+          <>
+            <ActionButton icon={Download} variant="outline" onClick={onExport}>
+              Export
+            </ActionButton>
+            {application.status === "pending" && (
+              <>
+                <ActionButton
+                  icon={XCircle}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={onReject}
+                >
+                  Reject
+                </ActionButton>
+                <ActionButton icon={CheckCircle} onClick={onApprove}>
+                  Approve
+                </ActionButton>
+              </>
+            )}
+            <ActionButton icon={Pencil} onClick={onEdit}>
+              Edit
             </ActionButton>
           </>
         )}
@@ -225,6 +251,26 @@ export function ApplicationDetailsView({
               </label>
               <p className="text-slate-900">{application.license_state}</p>
             </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                License Expiration Date
+              </label>
+              <p className="text-slate-900">
+                {application.license_expiration_date
+                  ? formatDate(application.license_expiration_date)
+                  : "Not provided"}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                Medical Card Expiration Date
+              </label>
+              <p className="text-slate-900">
+                {application.medical_card_expiration_date
+                  ? formatDate(application.medical_card_expiration_date)
+                  : "Not provided"}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -292,11 +338,6 @@ export function ApplicationDetailsView({
                         Employer
                       </label>
                       <p className="text-slate-900">{job.employerName}</p>
-                      {job.businessName && (
-                        <p className="text-slate-600 text-sm">
-                          {job.businessName}
-                        </p>
-                      )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">
@@ -316,15 +357,14 @@ export function ApplicationDetailsView({
                           job.toYear
                         )}
                       </p>
+                       
                     </div>
-                    {job.companyEmail && (
-                      <div>
-                        <label className="text-sm font-medium text-slate-700">
-                          Company Email
-                        </label>
-                        <p className="text-slate-900">{job.companyEmail}</p>
-                      </div>
-                    )}
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">
+                        Company Email
+                      </label>
+                      <p className="text-slate-900">{job.companyEmail || "N/A"}</p>
+                    </div>
                   </div>
                 </div>
               ))}

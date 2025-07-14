@@ -28,3 +28,4 @@ export function InfoCard({ title, icon: Icon, fields }: InfoCardProps) {
     </Card>
   );
 }
+ 

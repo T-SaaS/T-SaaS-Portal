@@ -8,30 +8,27 @@ import {
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { ApplicationRow } from "@/molecules/ApplicationRow";
-import { DriverApplication } from "@/types";
-import { Loader, TableSkeleton } from "@/components/ui/loader";
+import { DriverApplication, Company } from "@/types";
+import { TableSkeleton } from "@/components/ui/loader";
 
 export interface ApplicationsTableProps {
   applications: DriverApplication[];
+  companies?: Company[] | null;
   isLoading?: boolean;
   formatDate: (dateString: string) => string;
-  onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;
   onExport?: (id: string) => void;
 }
 
 export function ApplicationsTable({
   applications,
+  companies,
   isLoading = false,
   formatDate,
-  onApprove,
-  onReject,
   onExport,
 }: ApplicationsTableProps) {
   return (
@@ -64,9 +61,8 @@ export function ApplicationsTable({
                 <ApplicationRow
                   key={application.id}
                   application={application}
+                  companies={companies}
                   formatDate={formatDate}
-                  onApprove={onApprove}
-                  onReject={onReject}
                   onExport={onExport}
                 />
               ))}

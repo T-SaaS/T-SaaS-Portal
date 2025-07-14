@@ -8,6 +8,7 @@ import {
   DashboardPage,
   ApplicationsPage,
   ApplicationDetailsPage,
+  ApplicationEditPage,
   NotFoundPage,
 } from "@/pages";
 import { DriverFormPageRefactored } from "@/pages/DriverFormPage/DriverFormPageRefactored";
@@ -54,6 +55,11 @@ const privateRoutes = [
     path: "/applications/:id",
     element: <ApplicationDetailsPage />,
     title: "Application Details",
+  },
+  {
+    path: "/applications/:id/edit",
+    element: <ApplicationEditPage />,
+    title: "Edit Application",
   },
 ];
 

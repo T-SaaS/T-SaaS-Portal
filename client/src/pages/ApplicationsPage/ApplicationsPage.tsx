@@ -8,8 +8,10 @@ import { Download } from "lucide-react";
 import { DriverApplication } from "@/types";
 import { useDriverApplications } from "@/hooks/useDriverApplications";
 import { formatDate } from "@/utils/dateUtils";
+import { useCompanies } from "@/hooks/useCompany";
 
 export function ApplicationsPage() {
+  
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch applications using REST API
@@ -18,7 +20,12 @@ export function ApplicationsPage() {
     loading: applicationsLoading,
     error: applicationsError,
   } = useDriverApplications();
-
+  // Fetch companies using REST API
+  const {
+    companies,
+    isLoading: companiesLoading,
+    error: companiesError,
+  } = useCompanies();
   // Transform API data to match our DriverApplication type
   const transformApplication = (app: any): DriverApplication => ({
     id: app.id,
@@ -40,6 +47,8 @@ export function ApplicationsPage() {
     current_address_from_year: app.current_address_from_year,
     license_number: app.license_number,
     license_state: app.license_state,
+    license_expiration_date: app.license_expiration_date,
+    medical_card_expiration_date: app.medical_card_expiration_date,
     addresses: app.addresses || [],
     jobs: app.jobs || [],
     social_security_number: app.social_security_number,
@@ -59,16 +68,6 @@ export function ApplicationsPage() {
       app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.company_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const handleApprove = (id: string) => {
-    console.log("Approve application:", id);
-    // Add your approval logic here
-  };
-
-  const handleReject = (id: string) => {
-    console.log("Reject application:", id);
-    // Add your rejection logic here
-  };
 
   const handleExport = (id: string) => {
     console.log("Export application:", id);
@@ -125,10 +124,9 @@ export function ApplicationsPage() {
       {/* Applications Table */}
       <ApplicationsTable
         applications={filteredApplications}
+        companies={companies}
         isLoading={applicationsLoading}
         formatDate={formatDate}
-        onApprove={handleApprove}
-        onReject={handleReject}
         onExport={handleExport}
       />
     </div>

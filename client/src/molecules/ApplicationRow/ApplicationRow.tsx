@@ -1,37 +1,36 @@
 import { Link } from "react-router-dom";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/molecules/StatusBadge";
-import { ActionButton } from "@/atoms/ActionButton";
+import { Button } from "@/atoms/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Download,
-} from "lucide-react";
-import { DriverApplication } from "@/types";
+import { MoreHorizontal, Eye, Pencil, Download } from "lucide-react";
+import { DriverApplication, Company } from "@/types";
 
 export interface ApplicationRowProps {
   application: DriverApplication;
+  companies?: Company[] | null;
   formatDate: (dateString: string) => string;
-  onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;
   onExport?: (id: string) => void;
 }
 
 export function ApplicationRow({
   application,
+  companies,
   formatDate,
-  onApprove,
-  onReject,
   onExport,
 }: ApplicationRowProps) {
+  // Find the company name by matching company_id
+  const getCompanyName = (companyId: string): string => {
+    if (!companies) return companyId;
+    const company = companies.find((c) => c.id.toString() === companyId);
+    return company?.name || companyId;
+  };
+
   return (
     <TableRow>
       <TableCell>
@@ -42,7 +41,7 @@ export function ApplicationRow({
           <div className="text-sm text-slate-500">ID: {application.id}</div>
         </div>
       </TableCell>
-      <TableCell>{application.company_id}</TableCell>
+      <TableCell>{getCompanyName(application.company_id)}</TableCell>
       <TableCell>
         <div>
           <div className="text-sm">{application.email}</div>
@@ -56,28 +55,21 @@ export function ApplicationRow({
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <ActionButton
-              icon={MoreHorizontal}
-              variant="ghost"
-              className="h-8 w-8 p-0"
-            />
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild className="cursor-pointer">
               <Link to={`/applications/${application.id}`}>
                 <Eye className="mr-2 h-4 w-4" />
                 View Details
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onApprove?.(application.id)}>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onReject?.(application.id)}>
-              <XCircle className="mr-2 h-4 w-4" />
-              Reject
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onExport?.(application.id)}>
+            <DropdownMenuItem
+              onClick={() => onExport?.(application.id)}
+              className="cursor-pointer"
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </DropdownMenuItem>
