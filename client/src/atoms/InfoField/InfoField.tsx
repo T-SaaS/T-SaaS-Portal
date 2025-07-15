@@ -12,3 +12,4 @@ export function InfoField({ label, value, className = "" }: InfoFieldProps) {
     </div>
   );
 }
+ 

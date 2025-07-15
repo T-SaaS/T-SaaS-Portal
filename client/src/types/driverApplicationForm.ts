@@ -7,12 +7,23 @@ export type GapPeriod = {
   type?: "gap" | "overlap"; // Optional type to distinguish between gaps and overlaps
 };
 
+// Signature data structure
+export interface SignatureData {
+  data: string | null; // Base64 signature data
+  uploaded: boolean; // Whether it's been uploaded
+  url?: string; // Public URL after upload
+  signedUrl?: string; // Signed URL after upload
+  path?: string; // File path in storage
+  timestamp?: string; // When it was created
+}
+
 // Client-specific form values type (camelCase for form usage)
 export type DriverFormValues = {
   // Step 1: Personal Information
   firstName: string;
   lastName: string;
   dob: string;
+  socialSecurityNumber: string;
 
   // Step 2: Contact & Address
   phone: string;
@@ -37,9 +48,12 @@ export type DriverFormValues = {
   // Step 5: Employment History
   jobs: Job[];
 
-  // Step 6: Background Check
-  socialSecurityNumber: string;
-  consentToBackgroundCheck: number; // 1 for checked, 0 for not checked
+  // Step 6: Consents & Signatures
+  backgroundCheckConsentSignature: SignatureData;
+  employmentConsentSignature: SignatureData;
+  drugTestConsentSignature: SignatureData;
+  motorVehicleRecordConsentSignature: SignatureData;
+  generalConsentSignature: SignatureData;
 };
 
 export type FormStep = 0 | 1 | 2 | 3 | 4 | 5;

@@ -6,6 +6,9 @@ export const stepSchemas = [
     firstName: Yup.string().required("First Name is required"),
     lastName: Yup.string().required("Last Name is required"),
     dob: Yup.string().required("Date of Birth is required"),
+    socialSecurityNumber: Yup.string()
+      .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
+      .required("Social Security Number is required"),
   }),
 
   // Step 2: Contact & Address
@@ -104,14 +107,68 @@ export const stepSchemas = [
       .min(1, "At least one job is required"),
   }),
 
-  // Step 6: Background Check
+  // Step 6: Consents & Signatures
   Yup.object().shape({
-    socialSecurityNumber: Yup.string()
-      .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
-      .required("Social Security Number is required"),
-    consentToBackgroundCheck: Yup.number()
-      .min(1, "You must consent to background check to proceed")
-      .required("Background check consent is required"),
+    backgroundCheckConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("Background check consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
+    employmentConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("Employment consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
+    drugTestConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("Drug test consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
+    motorVehicleRecordConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("Motor vehicle record consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
+    generalConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("General consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
   }),
 ];
 
@@ -120,6 +177,9 @@ export const completeFormSchema = Yup.object().shape({
   firstName: Yup.string().required("First Name is required"),
   lastName: Yup.string().required("Last Name is required"),
   dob: Yup.string().required("Date of Birth is required"),
+  socialSecurityNumber: Yup.string()
+    .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
+    .required("Social Security Number is required"),
 
   // Step 2: Contact & Address
   phone: Yup.string().required("Phone number is required"),
@@ -172,7 +232,12 @@ export const completeFormSchema = Yup.object().shape({
       address: Yup.string().required("Address is required"),
       city: Yup.string().required("City is required"),
       state: Yup.string().required("State is required"),
-      zip: Yup.string().required("ZIP code is required"),
+      zip: Yup.string()
+        .required("ZIP code is required")
+        .matches(
+          /^\d{5}(-\d{4})?$/,
+          "ZIP code must be in format 12345 or 12345-6789"
+        ),
       fromMonth: Yup.number().min(1).max(12).required("From Month is required"),
       fromYear: Yup.number().min(1900).required("From Year is required"),
       toMonth: Yup.number().min(1).max(12).required("To Month is required"),
@@ -197,13 +262,67 @@ export const completeFormSchema = Yup.object().shape({
     )
     .min(1, "At least one job is required"),
 
-  // Step 6: Background Check
-  socialSecurityNumber: Yup.string()
-    .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
-    .required("Social Security Number is required"),
-  consentToBackgroundCheck: Yup.number()
-    .min(1, "You must consent to background check to proceed")
-    .required("Background check consent is required"),
+  // Step 6: Consents & Signatures
+  backgroundCheckConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("Background check consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
+  employmentConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("Employment consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
+  drugTestConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("Drug test consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
+  motorVehicleRecordConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("Motor vehicle record consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
+  generalConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("General consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
 });
 
 export type DriverFormSchema = typeof completeFormSchema;

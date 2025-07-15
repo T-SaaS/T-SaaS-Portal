@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { ExternalTemplate } from "@/templates/ExternalTemplate";
 import { PrivateTemplate } from "@/templates/PrivateTemplate";
@@ -22,11 +22,6 @@ const externalRoutes = [
     element: <DriverFormPageRefactored />,
     title: "Driver Application",
   },
-  // {
-  //   path: "/apply",
-  //   element: <DriverFormPage />,
-  //   title: "Driver Application",
-  // },
   {
     path: "/thank-you",
     element: <ThankYouPage />,

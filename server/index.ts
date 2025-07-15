@@ -4,6 +4,10 @@ import { registerRoutes } from "./routes";
 import { log, serveStatic, setupVite } from "./vite";
 
 const app = express();
+
+// Enable trust proxy for proper IP address detection behind proxies
+app.set("trust proxy", true);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

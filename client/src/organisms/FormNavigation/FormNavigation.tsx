@@ -24,26 +24,27 @@ export function FormNavigation({
 }: FormNavigationProps) {
   return (
     <div
-      className={`flex items-center justify-between pt-8 border-t border-slate-200 mt-8 ${className}`}
+      className={`flex flex-col sm:flex-row items-center justify-between pt-6 sm:pt-8 border-t border-slate-200 mt-6 sm:mt-8 space-y-4 sm:space-y-0 gap-2 ${className}`}
     >
       <Button
         type="button"
         variant="outline"
         onClick={onPrevious}
         disabled={isFirstStep}
-        className="bg-slate-100 hover:bg-slate-200 text-slate-700"
+        className="bg-slate-100 hover:bg-slate-200 text-slate-700 w-full sm:w-auto order-2 sm:order-1"
       >
         <ChevronLeft className="h-4 w-4 mr-2" />
-        Previous
+        <span className="hidden sm:inline">Previous</span>
+        <span className="sm:hidden">Back</span>
       </Button>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto order-1 sm:order-2">
         {onSaveDraft && (
           <Button
             type="button"
             variant="ghost"
             onClick={onSaveDraft}
-            className="text-slate-500 hover:text-slate-700"
+            className="text-slate-500 hover:text-slate-700 w-full sm:w-auto text-sm"
           >
             Save Draft
           </Button>
@@ -53,10 +54,11 @@ export function FormNavigation({
           <Button
             type="button"
             onClick={onNext}
-            className="bg-blue-500 hover:bg-blue-600"
+            className="bg-blue-500 hover:bg-blue-600 w-full sm:w-auto"
             disabled={gapDetected}
           >
-            Next
+            <span className="hidden sm:inline">Next</span>
+            <span className="sm:hidden">Continue</span>
             <ChevronRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
@@ -64,9 +66,19 @@ export function FormNavigation({
             type="button"
             onClick={onNext}
             disabled={isSubmitting}
-            className="bg-blue-500 hover:bg-blue-600"
+            className="bg-blue-500 hover:bg-blue-600 w-full sm:w-auto"
           >
-            {isSubmitting ? "Submitting..." : "Submit Application"}
+            {isSubmitting ? (
+              <>
+                <span className="hidden sm:inline">Submitting...</span>
+                <span className="sm:hidden">Submitting</span>
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline">Submit Application</span>
+                <span className="sm:hidden">Submit</span>
+              </>
+            )}
           </Button>
         )}
       </div>

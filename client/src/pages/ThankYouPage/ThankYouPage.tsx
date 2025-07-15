@@ -45,13 +45,6 @@ export function ThankYouPage() {
               >
                 Submit Another Application
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.close()}
-                className="w-full"
-              >
-                Close Window
-              </Button>
             </div>
           </div>
         </CardContent>

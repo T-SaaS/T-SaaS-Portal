@@ -50,7 +50,12 @@ export const useDriverApplicationForm = (currentStep: number) => {
       addresses: [],
       jobs: [],
       socialSecurityNumber: "",
-      consentToBackgroundCheck: 0,
+      // New signature fields for the new form structure
+      backgroundCheckConsentSignature: { data: null, uploaded: false },
+      employmentConsentSignature: { data: null, uploaded: false },
+      drugTestConsentSignature: { data: null, uploaded: false },
+      motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+      generalConsentSignature: { data: null, uploaded: false },
     },
     mode: "onTouched",
   });

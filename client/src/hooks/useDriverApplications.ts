@@ -50,7 +50,13 @@ export const useDriverApplications = () => {
           addresses: app.addresses,
           jobs: app.jobs,
           social_security_number: app.social_security_number,
-          consent_to_background_check: app.consent_to_background_check,
+          background_check_consent_signature: app.background_check_consent_signature,
+          employment_consent_signature: app.employment_consent_signature,
+          drug_test_consent_signature: app.drug_test_consent_signature,
+          motor_vehicle_record_consent_signature: app.motor_vehicle_record_consent_signature,
+          general_consent_signature: app.general_consent_signature,
+          deviceInfo: app.deviceInfo,
+          ipAddress: app.ipAddress,
         }));
 
         setApplications(transformedApplications);
@@ -131,7 +137,13 @@ export const useDriverApplication = (id: string) => {
           addresses: app.addresses,
           jobs: app.jobs,
           social_security_number: app.social_security_number,
-          consent_to_background_check: app.consent_to_background_check,
+          background_check_consent_signature: app.background_check_consent_signature,
+          employment_consent_signature: app.employment_consent_signature,
+          drug_test_consent_signature: app.drug_test_consent_signature,
+          motor_vehicle_record_consent_signature: app.motor_vehicle_record_consent_signature,
+          general_consent_signature: app.general_consent_signature,
+          deviceInfo: app.deviceInfo,
+          ipAddress: app.ipAddress,
         };
 
         setApplication(transformedApplication);
