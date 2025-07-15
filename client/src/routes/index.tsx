@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { ExternalTemplate } from "@/templates/ExternalTemplate";
 import { PrivateTemplate } from "@/templates/PrivateTemplate";
@@ -8,6 +8,7 @@ import {
   DashboardPage,
   ApplicationsPage,
   ApplicationDetailsPage,
+  ApplicationEditPage,
   NotFoundPage,
 } from "@/pages";
 import { DriverFormPageRefactored } from "@/pages/DriverFormPage/DriverFormPageRefactored";
@@ -21,11 +22,6 @@ const externalRoutes = [
     element: <DriverFormPageRefactored />,
     title: "Driver Application",
   },
-  // {
-  //   path: "/apply",
-  //   element: <DriverFormPage />,
-  //   title: "Driver Application",
-  // },
   {
     path: "/thank-you",
     element: <ThankYouPage />,
@@ -54,6 +50,11 @@ const privateRoutes = [
     path: "/applications/:id",
     element: <ApplicationDetailsPage />,
     title: "Application Details",
+  },
+  {
+    path: "/applications/:id/edit",
+    element: <ApplicationEditPage />,
+    title: "Edit Application",
   },
 ];
 

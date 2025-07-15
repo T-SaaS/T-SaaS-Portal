@@ -1,18 +1,30 @@
+import { useCompanyContext } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { DriverFormValues } from "@/types/driverApplicationForm";
+import { getDeviceInfo } from "@/utils/deviceInfo";
 import type { InsertDriverApplication } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 
 export const useFormSubmission = () => {
   const { toast } = useToast();
+  const { company } = useCompanyContext();
 
   const submitMutation = useMutation({
     mutationFn: async (data: InsertDriverApplication) => {
+      // Get device information for the application
+      const deviceInfo = getDeviceInfo();
+
+      // Include device information in the application submission
+      const applicationDataWithDeviceInfo = {
+        ...data,
+        deviceInfo,
+      };
+
       const response = await apiRequest(
         "POST",
-        "/api/driver-applications",
-        data
+        "/api/v1/driver-applications",
+        applicationDataWithDeviceInfo
       );
       return response.json();
     },
@@ -33,6 +45,46 @@ export const useFormSubmission = () => {
       });
     },
   });
+
+  const uploadSignature = async (
+    signatureData: string | null,
+    applicationId: string,
+    signatureType: string
+  ): Promise<any> => {
+    if (!signatureData || !company?.name) {
+      throw new Error("Missing signature data or company name");
+    }
+
+    const response = await apiRequest("POST", "/api/v1/signatures/upload", {
+      signatureData,
+      applicationId,
+      companyName: company.name,
+      signatureType,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to upload signature");
+    }
+
+    return response.json();
+  };
+
+  const updateApplicationWithSignatures = async (
+    applicationId: string,
+    signatureData: any
+  ): Promise<any> => {
+    const response = await apiRequest(
+      "PUT",
+      `/api/v1/driver-applications/${applicationId}`,
+      signatureData
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update application with signatures");
+    }
+
+    return response.json();
+  };
 
   const formatFormData = (data: DriverFormValues): InsertDriverApplication => {
     return {
@@ -70,22 +122,167 @@ export const useFormSubmission = () => {
         toYear: Number(job.toYear),
       })),
       social_security_number: data.socialSecurityNumber,
-      consent_to_background_check: Number(data.consentToBackgroundCheck),
+      // Don't include signature data in initial submission - we'll add it after uploads
     };
   };
 
   const submitForm = async (data: DriverFormValues): Promise<void> => {
-    const formattedData = formatFormData(data);
-    return new Promise((resolve, reject) => {
-      submitMutation.mutate(formattedData, {
-        onSuccess: () => {
-          resolve();
-        },
-        onError: (error) => {
-          reject(error);
-        },
+    try {
+      // Step 1: Submit the form data to create the application
+      const formattedData = formatFormData(data);
+
+      const submitResponse = await apiRequest(
+        "POST",
+        "/api/v1/driver-applications",
+        formattedData
+      );
+
+      if (!submitResponse.ok) {
+        throw new Error("Failed to create application");
+      }
+
+      const submitResult = await submitResponse.json();
+
+      if (!submitResult.success || !submitResult.data?.id) {
+        throw new Error("Invalid response from server");
+      }
+
+      const applicationId = submitResult.data.id.toString();
+
+      toast({
+        title: "Application Created",
+        description:
+          "Your application has been created. Uploading signatures...",
       });
-    });
+
+      // Step 2: Upload any signatures that haven't been uploaded yet
+      const signatureUploads = [];
+      const signatureUpdates: any = {};
+
+      // Background check consent signature
+      if (
+        data.backgroundCheckConsentSignature?.data &&
+        !data.backgroundCheckConsentSignature.uploaded
+      ) {
+        const uploadResult = await uploadSignature(
+          data.backgroundCheckConsentSignature.data,
+          applicationId,
+          "background-check-consent"
+        );
+        signatureUpdates.background_check_consent_signature = {
+          ...data.backgroundCheckConsentSignature,
+          uploaded: true,
+          url: uploadResult.data.url,
+          signedUrl: uploadResult.data.signedUrl,
+          path: uploadResult.data.path,
+        };
+      }
+
+      // Employment consent signature
+      if (
+        data.employmentConsentSignature?.data &&
+        !data.employmentConsentSignature.uploaded
+      ) {
+        const uploadResult = await uploadSignature(
+          data.employmentConsentSignature.data,
+          applicationId,
+          "employment-consent"
+        );
+        signatureUpdates.employment_consent_signature = {
+          ...data.employmentConsentSignature,
+          uploaded: true,
+          url: uploadResult.data.url,
+          signedUrl: uploadResult.data.signedUrl,
+          path: uploadResult.data.path,
+        };
+      }
+
+      // Drug test consent signature
+      if (
+        data.drugTestConsentSignature?.data &&
+        !data.drugTestConsentSignature.uploaded
+      ) {
+        const uploadResult = await uploadSignature(
+          data.drugTestConsentSignature.data,
+          applicationId,
+          "drug-test-consent"
+        );
+        signatureUpdates.drug_test_consent_signature = {
+          ...data.drugTestConsentSignature,
+          uploaded: true,
+          url: uploadResult.data.url,
+          signedUrl: uploadResult.data.signedUrl,
+          path: uploadResult.data.path,
+        };
+      }
+
+      // Motor vehicle record consent signature
+      if (
+        data.motorVehicleRecordConsentSignature?.data &&
+        !data.motorVehicleRecordConsentSignature.uploaded
+      ) {
+        const uploadResult = await uploadSignature(
+          data.motorVehicleRecordConsentSignature.data,
+          applicationId,
+          "motor-vehicle-record-consent"
+        );
+        signatureUpdates.motor_vehicle_record_consent_signature = {
+          ...data.motorVehicleRecordConsentSignature,
+          uploaded: true,
+          url: uploadResult.data.url,
+          signedUrl: uploadResult.data.signedUrl,
+          path: uploadResult.data.path,
+        };
+      }
+
+      // General consent signature
+      if (
+        data.generalConsentSignature?.data &&
+        !data.generalConsentSignature.uploaded
+      ) {
+        const uploadResult = await uploadSignature(
+          data.generalConsentSignature.data,
+          applicationId,
+          "general-consent"
+        );
+        signatureUpdates.general_consent_signature = {
+          ...data.generalConsentSignature,
+          uploaded: true,
+          url: uploadResult.data.url,
+          signedUrl: uploadResult.data.signedUrl,
+          path: uploadResult.data.path,
+        };
+      }
+
+      // Step 3: Update the application with signature data if any signatures were uploaded
+      if (Object.keys(signatureUpdates).length > 0) {
+        await updateApplicationWithSignatures(applicationId, signatureUpdates);
+
+        toast({
+          title: "Signatures Uploaded",
+          description:
+            "All signatures have been uploaded and attached to your application.",
+        });
+      }
+
+      // Step 4: Show final success message
+      toast({
+        title: "Application Submitted Successfully",
+        description:
+          "Your driver qualification application has been submitted for review.",
+      });
+    } catch (error) {
+      console.error("Error during form submission:", error);
+      toast({
+        title: "Submission Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit application",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   return {

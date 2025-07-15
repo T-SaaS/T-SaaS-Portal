@@ -11,6 +11,38 @@ export interface Company {
   updated_at: string;
 }
 
+// Device information structure
+export interface DeviceInfo {
+  userAgent: string;
+  platform: string;
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
+  screenWidth: number;
+  screenHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  devicePixelRatio: number;
+  language: string;
+  timezone: string;
+  touchSupport: boolean;
+  deviceType: "mobile" | "tablet" | "desktop";
+  browser: string;
+  browserVersion: string;
+  os: string;
+  osVersion: string;
+}
+
+// Signature data structure for database
+export interface SignatureData {
+  data: string | null; // Base64 signature data
+  uploaded: boolean; // Whether it's been uploaded
+  url?: string; // Public URL after upload
+  signedUrl?: string; // Signed URL after upload
+  path?: string; // File path in storage
+  timestamp?: string; // When it was created
+}
+
 export interface DriverApplication {
   id: number;
   company_id: number;
@@ -35,10 +67,18 @@ export interface DriverApplication {
   jobs: Job[];
   // Background check fields
   social_security_number: string;
-  consent_to_background_check: number; // 1 for true, 0 for false
   background_check_status?: string; // pending, in_progress, completed, failed
   background_check_results?: BackgroundCheckResult;
   background_check_completed_at?: string;
+  // Signature fields
+  background_check_consent_signature?: SignatureData;
+  employment_consent_signature?: SignatureData;
+  drug_test_consent_signature?: SignatureData;
+  motor_vehicle_record_consent_signature?: SignatureData;
+  general_consent_signature?: SignatureData;
+  // Device and IP information (captured once per application)
+  deviceInfo?: DeviceInfo;
+  ipAddress?: string;
   submitted_at: string;
 }
 
@@ -56,7 +96,6 @@ export const addressSchema = z.object({
 export const jobSchema = z.object({
   employerName: z.string().min(1, "Employer Name is required"),
   positionHeld: z.string().min(1, "Position Held is required"),
-  businessName: z.string().optional(),
   companyEmail: z.string().email().optional(),
   fromMonth: z.number().min(1).max(12),
   fromYear: z.number().min(1900),
@@ -113,9 +152,60 @@ export const insertDriverApplicationSchema = z.object({
   addresses: z.array(addressSchema),
   jobs: z.array(jobSchema).min(1, "At least one job is required"),
   social_security_number: z.string().default("000-00-0000"),
-  consent_to_background_check: z
-    .number()
-    .min(1, "Background check consent is required"),
+  // Device and IP information (captured once per application)
+  deviceInfo: z.any().optional(),
+  ipAddress: z.string().optional(),
+  // Signature fields
+  background_check_consent_signature: z
+    .object({
+      data: z.string().nullable(),
+      uploaded: z.boolean(),
+      url: z.string().optional(),
+      signedUrl: z.string().optional(),
+      path: z.string().optional(),
+      timestamp: z.string().optional(),
+    })
+    .optional(),
+  employment_consent_signature: z
+    .object({
+      data: z.string().nullable(),
+      uploaded: z.boolean(),
+      url: z.string().optional(),
+      signedUrl: z.string().optional(),
+      path: z.string().optional(),
+      timestamp: z.string().optional(),
+    })
+    .optional(),
+  drug_test_consent_signature: z
+    .object({
+      data: z.string().nullable(),
+      uploaded: z.boolean(),
+      url: z.string().optional(),
+      signedUrl: z.string().optional(),
+      path: z.string().optional(),
+      timestamp: z.string().optional(),
+    })
+    .optional(),
+  motor_vehicle_record_consent_signature: z
+    .object({
+      data: z.string().nullable(),
+      uploaded: z.boolean(),
+      url: z.string().optional(),
+      signedUrl: z.string().optional(),
+      path: z.string().optional(),
+      timestamp: z.string().optional(),
+    })
+    .optional(),
+  general_consent_signature: z
+    .object({
+      data: z.string().nullable(),
+      uploaded: z.boolean(),
+      url: z.string().optional(),
+      signedUrl: z.string().optional(),
+      path: z.string().optional(),
+      timestamp: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type InsertDriverApplication = z.infer<

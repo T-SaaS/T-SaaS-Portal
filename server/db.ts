@@ -10,16 +10,20 @@ if (!process.env.VITE_SUPABASE_URL) {
   );
 }
 
-if (!process.env.VITE_SUPABASE_ANON_KEY) {
+// Use service role key for server-side operations (higher permissions)
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseKey) {
   throw new Error(
-    "VITE_SUPABASE_ANON_KEY must be set. This is needed for server-side operations."
+    "SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_ANON_KEY must be set. This is needed for server-side operations."
   );
 }
 
 // Create Supabase client for server-side operations
 export const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY,
+  supabaseKey,
   {
     auth: {
       autoRefreshToken: false,

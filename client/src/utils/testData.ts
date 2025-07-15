@@ -4,7 +4,8 @@ export const testDriverData: DriverFormValues = {
   // Step 1: Personal Information
   firstName: "John",
   lastName: "Smith",
-  dob: "1985-06-15",
+  dob: "1985-06-15", // 37 years old
+  socialSecurityNumber: "123-45-6789",
 
   // Step 2: Contact & Address
   phone: "(555) 123-4567",
@@ -52,7 +53,6 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "ABC Transportation",
       positionHeld: "Delivery Driver",
-      businessName: "ABC Transportation",
       companyEmail: "abc@transportation.com",
       fromMonth: 1,
       fromYear: 2021,
@@ -62,7 +62,6 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "XYZ Logistics",
       positionHeld: "Warehouse Associate",
-      businessName: "XYZ Logistics",
       companyEmail: "xyz@logistics.com",
       fromMonth: 3,
       fromYear: 2019,
@@ -72,7 +71,6 @@ export const testDriverData: DriverFormValues = {
     {
       employerName: "Fast Freight Inc",
       positionHeld: "Truck Driver",
-      businessName: "Fast Freight Inc",
       companyEmail: "fast@freight.com",
       fromMonth: 1,
       fromYear: 2017,
@@ -81,9 +79,12 @@ export const testDriverData: DriverFormValues = {
     },
   ],
 
-  // Step 6: Background Check
-  socialSecurityNumber: "123-45-6789",
-  consentToBackgroundCheck: 1,
+  // Step 6: Consents & Signatures
+  backgroundCheckConsentSignature: { data: null, uploaded: false },
+  employmentConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  generalConsentSignature: { data: null, uploaded: false },
 };
 
 // Alternative test data with different scenarios
@@ -92,6 +93,7 @@ export const testDriverDataMinimal: DriverFormValues = {
   firstName: "Jane",
   lastName: "Doe",
   dob: "1990-03-20",
+  socialSecurityNumber: "987-65-4321",
 
   // Step 2: Contact & Address
   phone: "(555) 987-6543",
@@ -116,9 +118,8 @@ export const testDriverDataMinimal: DriverFormValues = {
   // Step 5: Employment History
   jobs: [
     {
-      employerName: "Metro Delivery", 
+      employerName: "Metro Delivery",
       positionHeld: "Driver",
-      businessName: "Metro Delivery",
       companyEmail: "metro@delivery.com",
       fromMonth: 1,
       fromYear: 2020,
@@ -127,9 +128,13 @@ export const testDriverDataMinimal: DriverFormValues = {
     },
   ],
 
-  // Step 6: Background Check
-  socialSecurityNumber: "987-65-4321",
-  consentToBackgroundCheck: 1,
+  // Step 6: Consents & Signatures
+  backgroundCheckConsentSignature: { data: null, uploaded: false },
+  employmentConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  generalConsentSignature: { data: null, uploaded: false },
+  
 };
 
 // Test data with gaps in employment/address history
@@ -138,6 +143,7 @@ export const testDriverDataWithGaps: DriverFormValues = {
   firstName: "Bob",
   lastName: "Johnson",
   dob: "1988-11-10",
+  socialSecurityNumber: "456-78-9012",
 
   // Step 2: Contact & Address
   phone: "(555) 456-7890",
@@ -175,7 +181,6 @@ export const testDriverDataWithGaps: DriverFormValues = {
     {
       employerName: "City Transport",
       positionHeld: "Driver",
-      businessName: "City Transport",
       companyEmail: "city@transport.com",
       fromMonth: 1,
       fromYear: 2023,
@@ -185,7 +190,6 @@ export const testDriverDataWithGaps: DriverFormValues = {
     {
       employerName: "Regional Hauling",
       positionHeld: "Truck Driver",
-      businessName: "Regional Hauling",
       companyEmail: "regional@hauling.com",
       fromMonth: 1,
       fromYear: 2021,
@@ -194,9 +198,12 @@ export const testDriverDataWithGaps: DriverFormValues = {
     },
   ],
 
-  // Step 6: Background Check
-  socialSecurityNumber: "456-78-9012",
-  consentToBackgroundCheck: 1,
+  // Step 6: Consents & Signatures
+  backgroundCheckConsentSignature: { data: null, uploaded: false },
+  employmentConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  generalConsentSignature: { data: null, uploaded: false },
 };
 
 // Function to load test data into form

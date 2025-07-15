@@ -4,7 +4,7 @@ import { insertDriverApplicationSchema } from "@shared/schema";
 import express, { json } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
-import { db } from "./db";
+import { db, supabase } from "./db";
 import { resolvers, typeDefs } from "./graphql/schema";
 
 export async function registerRoutes(app: express.Express): Promise<Server> {
@@ -23,23 +23,46 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Submit driver application
   app.post("/api/v1/driver-applications", async (req, res) => {
     try {
-      // console.log("Received driver application request:", {
-      //   body: req.body,
-      //   contentType: req.get("Content-Type"),
-      //   timestamp: new Date().toISOString(),
-      // });
+      // Capture IP address
+      const ipAddress =
+        req.ip ||
+        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
+        req.headers["x-forwarded-for"]?.toString().split(",")[0] ||
+        req.headers["x-real-ip"]?.toString() ||
+        "unknown";
 
-      const validatedData = insertDriverApplicationSchema.parse(req.body);
-      // console.log("Validation successful:", {
-      //   companyId: validatedData.company_id,
-      //   applicantName: `${validatedData.first_name} ${validatedData.last_name}`,
-      //   email: validatedData.email,
-      // });
+      // Extract device info from request body if provided
+      const { deviceInfo, ...applicationData } = req.body;
 
+      console.log("Application submission request:", {
+        hasDeviceInfo: !!deviceInfo,
+        ipAddress,
+        deviceInfo: deviceInfo
+          ? {
+              deviceType: deviceInfo.deviceType,
+              os: deviceInfo.os,
+              browser: deviceInfo.browser,
+              isMobile: deviceInfo.isMobile,
+            }
+          : null,
+      });
+
+      // Add device info and IP address to the application data
+      const dataWithDeviceInfo = {
+        ...applicationData,
+        deviceInfo,
+        ipAddress,
+      };
+
+      const validatedData =
+        insertDriverApplicationSchema.parse(dataWithDeviceInfo);
       const application = await db.createDriverApplication(validatedData);
       console.log("Application created successfully:", {
         id: application.id,
         companyId: application.company_id,
+        ipAddress,
+        deviceType: deviceInfo?.deviceType,
       });
 
       // Initiate background check process
@@ -134,7 +157,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   app.get("/api/v1/driver-applications/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      
+
       if (isNaN(id) || id <= 0) {
         return res.status(400).json({
           success: false,
@@ -178,6 +201,121 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         message: "Failed to retrieve application",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  // Update driver application
+  app.put("/api/v1/driver-applications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      // For signature updates, we only need to validate the signature fields
+      // Check if this is a signature-only update
+      const hasSignatureFields =
+        req.body.background_check_consent_signature ||
+        req.body.employment_consent_signature ||
+        req.body.drug_test_consent_signature ||
+        req.body.motor_vehicle_record_consent_signature ||
+        req.body.general_consent_signature;
+
+      let validatedData;
+
+      if (hasSignatureFields) {
+        // This is a signature update - only validate signature fields
+        const signatureUpdateSchema = z.object({
+          background_check_consent_signature: z
+            .object({
+              data: z.string().nullable(),
+              uploaded: z.boolean(),
+              url: z.string().optional(),
+              signedUrl: z.string().optional(),
+              path: z.string().optional(),
+              timestamp: z.string().optional(),
+            })
+            .optional(),
+          employment_consent_signature: z
+            .object({
+              data: z.string().nullable(),
+              uploaded: z.boolean(),
+              url: z.string().optional(),
+              signedUrl: z.string().optional(),
+              path: z.string().optional(),
+              timestamp: z.string().optional(),
+            })
+            .optional(),
+          drug_test_consent_signature: z
+            .object({
+              data: z.string().nullable(),
+              uploaded: z.boolean(),
+              url: z.string().optional(),
+              signedUrl: z.string().optional(),
+              path: z.string().optional(),
+              timestamp: z.string().optional(),
+            })
+            .optional(),
+          motor_vehicle_record_consent_signature: z
+            .object({
+              data: z.string().nullable(),
+              uploaded: z.boolean(),
+              url: z.string().optional(),
+              signedUrl: z.string().optional(),
+              path: z.string().optional(),
+              timestamp: z.string().optional(),
+            })
+            .optional(),
+          general_consent_signature: z
+            .object({
+              data: z.string().nullable(),
+              uploaded: z.boolean(),
+              url: z.string().optional(),
+              signedUrl: z.string().optional(),
+              path: z.string().optional(),
+              timestamp: z.string().optional(),
+            })
+            .optional(),
+        });
+
+        validatedData = signatureUpdateSchema.parse(req.body);
+      } else {
+        // This is a full application update - validate all fields
+        validatedData = insertDriverApplicationSchema.parse(req.body);
+      }
+
+      console.log("Validated data:", validatedData);
+      const application = await db.updateDriverApplication(id, validatedData);
+      res.json({
+        success: true,
+        message: "Application updated successfully",
+        data: application,
+      });
+    } catch (error) {
+      console.error(
+        `Error in PUT /api/v1/driver-applications/${req.params.id}:`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          id: req.params.id,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: "Validation error",
+          errors: error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+            code: err.code,
+          })),
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Failed to update application",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
   });
 
@@ -238,6 +376,144 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Failed to retrieve background check status",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Upload signature
+  app.post("/api/v1/signatures/upload", async (req, res) => {
+    try {
+      const { signatureData, applicationId, companyName, signatureType } =
+        req.body;
+
+      if (!signatureData || !applicationId || !companyName || !signatureType) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required fields: signatureData, applicationId, companyName, signatureType",
+        });
+      }
+
+      console.log("Signature upload request:", {
+        applicationId,
+        companyName,
+        signatureType,
+        hasSignatureData: !!signatureData,
+      });
+
+      // Try to upload to Supabase Storage first
+      let uploadSuccess = false;
+      let storageData = null;
+
+      try {
+        // Convert data URL to blob
+        const response = await fetch(signatureData);
+        const blob = await response.blob();
+
+        // Create file path with signature type
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const fileName = `${applicationId}-${signatureType}-${timestamp}.png`;
+        const filePath = `${companyName}/${fileName}`;
+
+        console.log("Uploading signature to path:", filePath);
+
+        // First, check if the bucket exists and we have access
+        const { data: buckets, error: bucketsError } =
+          await supabase.storage.listBuckets();
+
+        if (bucketsError) {
+          console.error("Error listing buckets:", bucketsError);
+          throw new Error("Failed to access storage buckets");
+        }
+
+        console.log(
+          "Available buckets:",
+          buckets?.map((b) => b.name)
+        );
+
+        // Check if application-signatures bucket exists
+        const signaturesBucket = buckets?.find(
+          (b) => b.name === "application-signatures"
+        );
+        if (!signaturesBucket) {
+          console.error("application-signatures bucket not found");
+          throw new Error("Storage bucket not configured");
+        }
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from("application-signatures")
+          .upload(filePath, blob, {
+            contentType: "image/png",
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          throw error;
+        }
+
+        console.log("Signature uploaded successfully:", data);
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from("application-signatures")
+          .getPublicUrl(filePath);
+
+        // Get signed URL (valid for 1 hour)
+        const { data: signedUrlData } = await supabase.storage
+          .from("application-signatures")
+          .createSignedUrl(filePath, 60 * 60); // 1 hour
+
+        storageData = {
+          url: urlData.publicUrl,
+          signedUrl: signedUrlData?.signedUrl,
+          path: filePath,
+          timestamp: new Date().toISOString(),
+        };
+
+        uploadSuccess = true;
+      } catch (storageError) {
+        console.error(
+          "Storage upload failed, falling back to database storage:",
+          storageError
+        );
+
+        // Fallback: Store signature data directly in database
+        storageData = {
+          url: null,
+          signedUrl: null,
+          path: null,
+          data: signatureData, // Store the actual signature data
+          timestamp: new Date().toISOString(),
+        };
+
+        uploadSuccess = true; // Still consider it successful
+      }
+
+      res.json({
+        success: true,
+        message: uploadSuccess
+          ? "Signature uploaded successfully"
+          : "Signature stored in database",
+        data: {
+          ...storageData,
+          signatureType,
+          storedInDatabase: !storageData.url, // Flag to indicate if stored in DB
+        },
+      });
+    } catch (error) {
+      console.error("Error in POST /api/v1/signatures/upload:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload signature",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }

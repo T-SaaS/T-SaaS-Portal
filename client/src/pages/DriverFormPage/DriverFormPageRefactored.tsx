@@ -1,30 +1,34 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { FormNavigation } from "@/organisms/FormNavigation";
 import { DriverFormTemplate } from "@/templates/DriverFormTemplate";
 import { PersonalInfoStep } from "@/organisms/PersonalInfoStep";
 import { ContactAddressStep } from "@/organisms/ContactAddressStep";
 import { LicenseInfoStep } from "@/organisms/LicenseInfoStep";
 import { AddressHistoryStep } from "@/organisms/AddressHistoryStep";
 import { EmploymentHistoryStep } from "@/organisms/EmploymentHistoryStep";
-import { BackgroundCheckStep } from "@/organisms/BackgroundCheckStep";
-import { FormNavigation } from "@/organisms/FormNavigation";
+import { ApplicationConsentsStep } from "@/organisms/ApplicationConsentsStep/ApplicationConsentsStep";
 import { useDriverApplicationForm } from "@/hooks/useDriverApplicationForm";
 import { useFormSteps } from "@/hooks/useFormSteps";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { useGapDetection } from "@/hooks/useGapDetection";
 import { loadTestData } from "@/utils/testData";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useCompanyContext } from "@/contexts/CompanyContext";
 import type { GapPeriod } from "@/types/driverApplicationForm";
-import { useNavigate } from "react-router-dom";
 
 export function DriverFormPageRefactored() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { company } = useCompanyContext();
   const [unemploymentPeriods, setUnemploymentPeriods] = useState<GapPeriod[]>(
     []
   );
   const [residencyPeriods, setResidencyPeriods] = useState<GapPeriod[]>([]);
+
+  const companyName = company?.name;
 
   const {
     currentStep,
@@ -141,15 +145,15 @@ export function DriverFormPageRefactored() {
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 0:
-        return <PersonalInfoStep control={form.control} />;
+        return <PersonalInfoStep control={form.control as any} />;
       case 1:
-        return <ContactAddressStep control={form.control} />;
+        return <ContactAddressStep control={form.control as any} />;
       case 2:
-        return <LicenseInfoStep control={form.control} />;
+        return <LicenseInfoStep control={form.control as any} />;
       case 3:
         return (
           <AddressHistoryStep
-            control={form.control}
+            control={form.control as any}
             needsAdditionalAddresses={needsAdditionalAddresses}
             residencyGapDetected={residencyGapDetected}
             residencyPeriods={residencyPeriods}
@@ -160,7 +164,7 @@ export function DriverFormPageRefactored() {
       case 4:
         return (
           <EmploymentHistoryStep
-            control={form.control}
+            control={form.control as any}
             gapDetected={gapDetected}
             unemploymentPeriods={unemploymentPeriods}
             onAcknowledgeGaps={handleAcknowledgeEmploymentGaps}
@@ -168,7 +172,7 @@ export function DriverFormPageRefactored() {
           />
         );
       case 5:
-        return <BackgroundCheckStep control={form.control} />;
+        return <ApplicationConsentsStep companyName={companyName} />;
       default:
         return null;
     }
@@ -177,7 +181,10 @@ export function DriverFormPageRefactored() {
   return (
     <DriverFormTemplate currentStep={currentStep}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(submitForm)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(submitForm as any)}
+          className="space-y-6"
+        >
           {/* Test Data Buttons - Only show in development */}
           {process.env.NODE_ENV === "development" && (
             <div className="flex space-x-2 mb-6">

@@ -1,5 +1,6 @@
 import { Control } from "react-hook-form";
 import { FormField } from "@/molecules/FormField";
+import { SSNInput } from "@/molecules/SSNInput";
 import type { DriverFormValues } from "@/types/driverApplicationForm";
 
 export interface PersonalInfoStepProps {
@@ -34,6 +35,14 @@ export function PersonalInfoStep({
         name="dob"
         label="Date of Birth"
         type="date"
+        required
+        className="md:col-span-1"
+      />
+
+      <SSNInput
+        control={control}
+        name="socialSecurityNumber"
+        label="Social Security Number"
         required
         className="md:col-span-1"
       />

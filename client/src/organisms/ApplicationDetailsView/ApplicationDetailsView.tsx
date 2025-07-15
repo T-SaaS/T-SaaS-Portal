@@ -6,35 +6,45 @@ import {
   Download,
   CheckCircle,
   XCircle,
+  Pencil,
+  Save,
   User,
   Phone,
   FileText,
   MapPin,
   Briefcase,
   Shield,
-  Calendar,
-  Mail,
+  Monitor,
+  Smartphone,
+  Tablet,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 export interface ApplicationDetailsViewProps {
   application: DriverApplication;
   company: Company;
   formatDate: (dateString: string) => string;
+  isEditing?: boolean;
   onExport?: () => void;
   onApprove?: () => void;
   onReject?: () => void;
+  onEdit?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }
 
 export function ApplicationDetailsView({
   application,
   company,
   formatDate,
+  isEditing = false,
   onExport,
   onApprove,
   onReject,
+  onEdit,
+  onSave,
+  onCancel,
 }: ApplicationDetailsViewProps) {
   const formatDateRange = (
     fromMonth: number,
@@ -121,21 +131,37 @@ export function ApplicationDetailsView({
         title="Application Details"
         description="View and manage driver application"
       >
-        <ActionButton icon={Download} variant="outline" onClick={onExport}>
-          Export
-        </ActionButton>
-        {application.status === "pending" && (
+        {isEditing ? (
           <>
-            <ActionButton
-              icon={XCircle}
-              variant="outline"
-              className="text-red-600 hover:text-red-700"
-              onClick={onReject}
-            >
-              Reject
+            <ActionButton icon={Save} onClick={onSave}>
+              Save Changes
             </ActionButton>
-            <ActionButton icon={CheckCircle} onClick={onApprove}>
-              Approve
+            <ActionButton icon={XCircle} variant="outline" onClick={onCancel}>
+              Cancel
+            </ActionButton>
+          </>
+        ) : (
+          <>
+            <ActionButton icon={Download} variant="outline" onClick={onExport}>
+              Export
+            </ActionButton>
+            {application.status === "pending" && (
+              <>
+                <ActionButton
+                  icon={XCircle}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={onReject}
+                >
+                  Reject
+                </ActionButton>
+                <ActionButton icon={CheckCircle} onClick={onApprove}>
+                  Approve
+                </ActionButton>
+              </>
+            )}
+            <ActionButton icon={Pencil} onClick={onEdit}>
+              Edit
             </ActionButton>
           </>
         )}
@@ -225,6 +251,26 @@ export function ApplicationDetailsView({
               </label>
               <p className="text-slate-900">{application.license_state}</p>
             </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                License Expiration Date
+              </label>
+              <p className="text-slate-900">
+                {application.license_expiration_date
+                  ? formatDate(application.license_expiration_date)
+                  : "Not provided"}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                Medical Card Expiration Date
+              </label>
+              <p className="text-slate-900">
+                {application.medical_card_expiration_date
+                  ? formatDate(application.medical_card_expiration_date)
+                  : "Not provided"}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -292,11 +338,6 @@ export function ApplicationDetailsView({
                         Employer
                       </label>
                       <p className="text-slate-900">{job.employerName}</p>
-                      {job.businessName && (
-                        <p className="text-slate-600 text-sm">
-                          {job.businessName}
-                        </p>
-                      )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">
@@ -317,14 +358,14 @@ export function ApplicationDetailsView({
                         )}
                       </p>
                     </div>
-                    {job.companyEmail && (
-                      <div>
-                        <label className="text-sm font-medium text-slate-700">
-                          Company Email
-                        </label>
-                        <p className="text-slate-900">{job.companyEmail}</p>
-                      </div>
-                    )}
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">
+                        Company Email
+                      </label>
+                      <p className="text-slate-900">
+                        {job.companyEmail || "N/A"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -343,14 +384,6 @@ export function ApplicationDetailsView({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700">
-                Consent Given
-              </label>
-              <p className="text-slate-900">
-                {application.consent_to_background_check === 1 ? "Yes" : "No"}
-              </p>
-            </div>
             <div>
               <label className="text-sm font-medium text-slate-700">
                 Status
@@ -427,6 +460,158 @@ export function ApplicationDetailsView({
                       "N/A"}
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Signature Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Digital Signatures
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Overall signature timestamp */}
+          {(() => {
+            // Find the earliest signature timestamp
+            const signatures = [
+              application.background_check_consent_signature,
+              application.employment_consent_signature,
+              application.drug_test_consent_signature,
+              application.motor_vehicle_record_consent_signature,
+              application.general_consent_signature,
+            ];
+
+            const timestamps = signatures
+              .map((sig) => {
+                if (typeof sig === "string") {
+                  try {
+                    const parsed = JSON.parse(sig);
+                    return parsed?.timestamp;
+                  } catch {
+                    return null;
+                  }
+                }
+                return sig?.timestamp;
+              })
+              .filter(Boolean)
+              .sort();
+
+            const earliestTimestamp = timestamps[0];
+
+            return earliestTimestamp ? (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-slate-700">
+                  Application Signed At
+                </label>
+                <p className="text-slate-900">
+                  {formatDate(earliestTimestamp)}
+                </p>
+              </div>
+            ) : null;
+          })()}
+
+          {/* Signature checklist */}
+          <div className="space-y-2">
+            {[
+              {
+                type: "Background Check Consent",
+                signature: application.background_check_consent_signature,
+              },
+              {
+                type: "Employment Verification Consent",
+                signature: application.employment_consent_signature,
+              },
+              {
+                type: "Drug/Alcohol Testing Consent",
+                signature: application.drug_test_consent_signature,
+              },
+              {
+                type: "Motor Vehicle Record Consent",
+                signature: application.motor_vehicle_record_consent_signature,
+              },
+              {
+                type: "General Application Consent",
+                signature: application.general_consent_signature,
+              },
+            ].map((consent, index) => {
+              // Check if signature exists and has data
+              let signatureData: any = consent.signature;
+
+              // If signature data is a string, try to parse it as JSON
+              if (typeof signatureData === "string") {
+                try {
+                  signatureData = JSON.parse(signatureData);
+                } catch (e) {
+                  signatureData = null;
+                }
+              }
+
+              const hasSignature =
+                signatureData &&
+                (signatureData.data ||
+                  signatureData.uploaded ||
+                  signatureData.url ||
+                  signatureData.path ||
+                  (typeof signatureData === "object" &&
+                    Object.keys(signatureData).length > 0));
+
+              return (
+                <div key={index} className="flex items-center gap-3">
+                  {hasSignature ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className="text-slate-900">{consent.type}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Device Type and IP Address */}
+          {(application.deviceInfo || application.ipAddress) && (
+            <div className="mt-6 pt-6 border-t">
+              <h4 className="font-medium text-slate-900 mb-4">
+                Device Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {application.deviceInfo && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">
+                      Device Type
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {application.deviceInfo.deviceType === "mobile" && (
+                        <Smartphone className="h-4 w-4 text-slate-600" />
+                      )}
+                      {application.deviceInfo.deviceType === "tablet" && (
+                        <Tablet className="h-4 w-4 text-slate-600" />
+                      )}
+                      {application.deviceInfo.deviceType === "desktop" && (
+                        <Monitor className="h-4 w-4 text-slate-600" />
+                      )}
+                      <span className="text-slate-900 capitalize">
+                        {application.deviceInfo.deviceType}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {application.ipAddress && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">
+                      IP Address
+                    </label>
+                    <p className="text-slate-900 font-mono text-xs">
+                      {application.ipAddress}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

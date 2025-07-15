@@ -5,7 +5,6 @@
  * @returns Formatted date string (e.g., "Jul 10, 2025, 04:59 PM")
  */
 export const formatDate = (dateString: string) => {
-    console.log(dateString);
   return new Date(dateString).toLocaleString("en-US", {
     year: "numeric",
     month: "short",

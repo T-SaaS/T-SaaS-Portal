@@ -32,7 +32,7 @@ export function ProgressStepper({
 
       <Progress value={progressPercentage} className="h-3" />
 
-      <div className="flex items-start justify-between">
+      <div className="grid grid-cols-6 gap-2 sm:gap-4">
         {stepLabels.map((label, index) => (
           <div key={index} className="flex flex-col items-center space-y-2">
             <div
@@ -51,7 +51,7 @@ export function ProgressStepper({
             </div>
             <span
               className={cn(
-                "text-xs text-center max-w-20 transition-colors",
+                "text-xs text-center transition-colors w-full px-1",
                 index <= currentStep ? "text-slate-600" : "text-slate-400"
               )}
             >

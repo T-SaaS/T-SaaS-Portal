@@ -7,7 +7,7 @@ import type {
 export const getStepFields = (step: number): (keyof DriverFormValues)[] => {
   switch (step) {
     case 0:
-      return ["firstName", "lastName", "dob"];
+      return ["firstName", "lastName", "dob", "socialSecurityNumber"];
     case 1:
       return [
         "phone",
@@ -32,7 +32,13 @@ export const getStepFields = (step: number): (keyof DriverFormValues)[] => {
     case 4:
       return ["jobs"];
     case 5:
-      return ["socialSecurityNumber", "consentToBackgroundCheck"];
+      return [
+        "backgroundCheckConsentSignature",
+        "employmentConsentSignature",
+        "drugTestConsentSignature",
+        "motorVehicleRecordConsentSignature",
+        "generalConsentSignature",
+      ];
     default:
       return [];
   }
@@ -65,8 +71,8 @@ export const stepConfigs: FormStepConfig[] = [
     fields: getStepFields(4),
   },
   {
-    title: "Background Check",
-    label: "Background Check",
+    title: "Consents & Signatures",
+    label: "Consents",
     fields: getStepFields(5),
   },
 ];

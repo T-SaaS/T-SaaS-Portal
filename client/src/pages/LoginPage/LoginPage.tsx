@@ -178,7 +178,7 @@ export function LoginPage() {
             >
               Forgot your password?
             </Link>
-            <div className="text-sm text-slate-600">
+            {/* <div className="text-sm text-slate-600">
               Don't have an account?{" "}
               <Link
                 to="/signup"
@@ -186,7 +186,7 @@ export function LoginPage() {
               >
                 Sign up
               </Link>
-            </div>
+            </div> */}
           </div>
         </CardContent>
       </Card>
