@@ -3,17 +3,7 @@
   "builds": [
     {
       "src": "server/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": "shared/**/*"
-      }
-    },
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/public"
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -23,15 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/public/$1"
+      "dest": "/server/index.ts"
     }
-  ],
-  "functions": {
-    "server/index.ts": {
-      "includeFiles": "shared/**/*"
-    }
-  },
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
