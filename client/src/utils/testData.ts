@@ -80,11 +80,17 @@ export const testDriverData: DriverFormValues = {
   ],
 
   // Step 6: Consents & Signatures
-  backgroundCheckConsentSignature: { data: null, uploaded: false },
-  employmentConsentSignature: { data: null, uploaded: false },
-  drugTestConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignatureConsent: false,
+  fmcsaClearinghouseConsentSignature: { data: null, uploaded: false },
+  fmcsaClearinghouseConsentSignatureConsent: false,
   motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignatureConsent: false,
+  drugTestConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignatureConsent: false,
+  drugTestQuestion: "",
   generalConsentSignature: { data: null, uploaded: false },
+  generalConsentSignatureConsent: false,
 };
 
 // Alternative test data with different scenarios
@@ -111,6 +117,8 @@ export const testDriverDataMinimal: DriverFormValues = {
   licenseExpirationDate: "2025-06-15",
   medicalCardExpirationDate: "2025-06-15",
   positionAppliedFor: "delivery-driver",
+  licensePhoto: null,
+  medicalCardPhoto: null,
 
   // Step 4: Address History (empty since current address is 4+ years)
   addresses: [],
@@ -129,12 +137,17 @@ export const testDriverDataMinimal: DriverFormValues = {
   ],
 
   // Step 6: Consents & Signatures
-  backgroundCheckConsentSignature: { data: null, uploaded: false },
-  employmentConsentSignature: { data: null, uploaded: false },
-  drugTestConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignatureConsent: false,
+  fmcsaClearinghouseConsentSignature: { data: null, uploaded: false },
+  fmcsaClearinghouseConsentSignatureConsent: false,
   motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignatureConsent: false,
+  drugTestConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignatureConsent: false,
+  drugTestQuestion: "",
   generalConsentSignature: { data: null, uploaded: false },
-  
+  generalConsentSignatureConsent: false,
 };
 
 // Test data with gaps in employment/address history
@@ -161,6 +174,8 @@ export const testDriverDataWithGaps: DriverFormValues = {
   licenseExpirationDate: "2025-06-15",
   medicalCardExpirationDate: "2025-06-15",
   positionAppliedFor: "local-driver",
+  licensePhoto: null,
+  medicalCardPhoto: null,
 
   // Step 4: Address History
   addresses: [
@@ -199,11 +214,17 @@ export const testDriverDataWithGaps: DriverFormValues = {
   ],
 
   // Step 6: Consents & Signatures
-  backgroundCheckConsentSignature: { data: null, uploaded: false },
-  employmentConsentSignature: { data: null, uploaded: false },
-  drugTestConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignature: { data: null, uploaded: false },
+  fairCreditReportingActConsentSignatureConsent: false,
+  fmcsaClearinghouseConsentSignature: { data: null, uploaded: false },
+  fmcsaClearinghouseConsentSignatureConsent: false,
   motorVehicleRecordConsentSignature: { data: null, uploaded: false },
+  motorVehicleRecordConsentSignatureConsent: false,
+  drugTestConsentSignature: { data: null, uploaded: false },
+  drugTestConsentSignatureConsent: false,
+  drugTestQuestion: "",
   generalConsentSignature: { data: null, uploaded: false },
+  generalConsentSignatureConsent: false,
 };
 
 // Function to load test data into form

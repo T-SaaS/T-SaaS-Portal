@@ -11,15 +11,16 @@ import {
   ApplicationEditPage,
   NotFoundPage,
 } from "@/pages";
-import { DriverFormPageRefactored } from "@/pages/DriverFormPage/DriverFormPageRefactored";
+import { DriverFormPage } from "@/pages/DriverFormPage/DriverFormPage";
 import { ThankYouPage } from "@/pages/ThankYouPage/ThankYouPage";
 import { LoginPage } from "@/pages/LoginPage/LoginPage";
+import { DeviceInfoTest } from "@/utils/deviceInfoTest";
 
 // External routes - accessible without authentication
 const externalRoutes = [
   {
     path: "/ex/:companySlug/apply",
-    element: <DriverFormPageRefactored />,
+    element: <DriverFormPage />,
     title: "Driver Application",
   },
   {
@@ -55,6 +56,11 @@ const privateRoutes = [
     path: "/applications/:id/edit",
     element: <ApplicationEditPage />,
     title: "Edit Application",
+  },
+  {
+    path: "/devices",
+    element: <DeviceInfoTest />,
+    title: "Devices",
   },
 ];
 

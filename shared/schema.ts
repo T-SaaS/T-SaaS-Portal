@@ -33,15 +33,12 @@ export interface DeviceInfo {
   osVersion: string;
 }
 
-// Signature data structure for database
-export interface SignatureData {
-  data: string | null; // Base64 signature data
-  uploaded: boolean; // Whether it's been uploaded
-  url?: string; // Public URL after upload
-  signedUrl?: string; // Signed URL after upload
-  path?: string; // File path in storage
-  timestamp?: string; // When it was created
-}
+// Signature data structures (defined via Zod schemas below)
+// - SignatureRequestData: includes data field for API calls
+// - SignatureData: no data field for database storage
+
+// Document photo data structure for database (no data field since stored in bucket)
+// Interface is defined via Zod schema below
 
 export interface DriverApplication {
   id: number;
@@ -70,15 +67,27 @@ export interface DriverApplication {
   background_check_status?: string; // pending, in_progress, completed, failed
   background_check_results?: BackgroundCheckResult;
   background_check_completed_at?: string;
-  // Signature fields
-  background_check_consent_signature?: SignatureData;
-  employment_consent_signature?: SignatureData;
-  drug_test_consent_signature?: SignatureData;
-  motor_vehicle_record_consent_signature?: SignatureData;
-  general_consent_signature?: SignatureData;
+  // Consent fields
+  fair_credit_reporting_act_consent?: boolean;
+  fmcsa_clearinghouse_consent?: boolean;
+  motor_vehicle_record_consent?: boolean;
+  drug_test_consent?: boolean;
+  drug_test_question?: string;
+  general_consent?: boolean;
+  // Signature fields (stored in database without data)
+  fair_credit_reporting_act_consent_signature?: z.infer<
+    typeof signatureDataSchema
+  >;
+  fmcsa_clearinghouse_consent_signature?: z.infer<typeof signatureDataSchema>;
+  motor_vehicle_record_consent_signature?: z.infer<typeof signatureDataSchema>;
+  drug_test_consent_signature?: z.infer<typeof signatureDataSchema>;
+  general_consent_signature?: z.infer<typeof signatureDataSchema>;
+  // Document photo fields (stored in separate bucket)
+  license_photo?: z.infer<typeof documentPhotoDataSchema>;
+  medical_card_photo?: z.infer<typeof documentPhotoDataSchema>;
   // Device and IP information (captured once per application)
-  deviceInfo?: DeviceInfo;
-  ipAddress?: string;
+  device_info?: DeviceInfo;
+  ip_address?: string;
   submitted_at: string;
 }
 
@@ -132,6 +141,37 @@ export const backgroundCheckResultSchema = z.object({
   }),
 });
 
+// Document photo data schema (no data field since stored in bucket)
+export const documentPhotoDataSchema = z.object({
+  uploaded: z.boolean(),
+  url: z.string().optional(),
+  signedUrl: z.string().optional(),
+  path: z.string().optional(),
+  timestamp: z.string().optional(),
+  filename: z.string().optional(),
+  contentType: z.string().optional(),
+  size: z.number().optional(),
+});
+
+// Signature data schema for database storage (no data field)
+export const signatureDataSchema = z.object({
+  uploaded: z.boolean(),
+  url: z.string().optional(),
+  signedUrl: z.string().optional(),
+  path: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
+// Signature request schema for API calls (includes data field)
+export const signatureRequestDataSchema = z.object({
+  data: z.string().nullable(),
+  uploaded: z.boolean(),
+  url: z.string().optional(),
+  signedUrl: z.string().optional(),
+  path: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
 // Zod schema for inserting new driver applications
 export const insertDriverApplicationSchema = z.object({
   company_id: z.number().min(1, "Company ID is required"),
@@ -148,64 +188,31 @@ export const insertDriverApplicationSchema = z.object({
   current_address_from_year: z.number().min(1900),
   license_number: z.string().min(1, "License number is required"),
   license_state: z.string().min(1, "License state is required"),
+  license_expiration_date: z.string().optional(),
+  medical_card_expiration_date: z.string().optional(),
   position_applied_for: z.string().min(1, "Position applied for is required"),
   addresses: z.array(addressSchema),
   jobs: z.array(jobSchema).min(1, "At least one job is required"),
   social_security_number: z.string().default("000-00-0000"),
+  // Consent fields
+  fair_credit_reporting_act_consent: z.boolean().optional(),
+  fmcsa_clearinghouse_consent: z.boolean().optional(),
+  motor_vehicle_record_consent: z.boolean().optional(),
+  drug_test_consent: z.boolean().optional(),
+  drug_test_question: z.string().optional(),
+  general_consent: z.boolean().optional(),
   // Device and IP information (captured once per application)
-  deviceInfo: z.any().optional(),
-  ipAddress: z.string().optional(),
-  // Signature fields
-  background_check_consent_signature: z
-    .object({
-      data: z.string().nullable(),
-      uploaded: z.boolean(),
-      url: z.string().optional(),
-      signedUrl: z.string().optional(),
-      path: z.string().optional(),
-      timestamp: z.string().optional(),
-    })
-    .optional(),
-  employment_consent_signature: z
-    .object({
-      data: z.string().nullable(),
-      uploaded: z.boolean(),
-      url: z.string().optional(),
-      signedUrl: z.string().optional(),
-      path: z.string().optional(),
-      timestamp: z.string().optional(),
-    })
-    .optional(),
-  drug_test_consent_signature: z
-    .object({
-      data: z.string().nullable(),
-      uploaded: z.boolean(),
-      url: z.string().optional(),
-      signedUrl: z.string().optional(),
-      path: z.string().optional(),
-      timestamp: z.string().optional(),
-    })
-    .optional(),
-  motor_vehicle_record_consent_signature: z
-    .object({
-      data: z.string().nullable(),
-      uploaded: z.boolean(),
-      url: z.string().optional(),
-      signedUrl: z.string().optional(),
-      path: z.string().optional(),
-      timestamp: z.string().optional(),
-    })
-    .optional(),
-  general_consent_signature: z
-    .object({
-      data: z.string().nullable(),
-      uploaded: z.boolean(),
-      url: z.string().optional(),
-      signedUrl: z.string().optional(),
-      path: z.string().optional(),
-      timestamp: z.string().optional(),
-    })
-    .optional(),
+  device_info: z.any().optional(),
+  ip_address: z.string().optional(),
+  // Signature fields (no data field - stored in bucket)
+  fair_credit_reporting_act_consent_signature: signatureDataSchema.optional(),
+  fmcsa_clearinghouse_consent_signature: signatureDataSchema.optional(),
+  motor_vehicle_record_consent_signature: signatureDataSchema.optional(),
+  drug_test_consent_signature: signatureDataSchema.optional(),
+  general_consent_signature: signatureDataSchema.optional(),
+  // Document photo fields (no data field - stored in bucket)
+  license_photo: documentPhotoDataSchema.optional(),
+  medical_card_photo: documentPhotoDataSchema.optional(),
 });
 
 export type InsertDriverApplication = z.infer<
@@ -214,3 +221,6 @@ export type InsertDriverApplication = z.infer<
 export type Address = z.infer<typeof addressSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type BackgroundCheckResult = z.infer<typeof backgroundCheckResultSchema>;
+export type DocumentPhotoData = z.infer<typeof documentPhotoDataSchema>;
+export type SignatureData = z.infer<typeof signatureDataSchema>;
+export type SignatureRequestData = z.infer<typeof signatureRequestDataSchema>;

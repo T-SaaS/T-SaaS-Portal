@@ -102,6 +102,8 @@ export const useFormSubmission = () => {
       current_address_from_year: Number(data.currentAddressFromYear),
       license_number: data.licenseNumber,
       license_state: data.licenseState,
+      license_expiration_date: data.licenseExpirationDate || "",
+      medical_card_expiration_date: data.medicalCardExpirationDate || "",
       position_applied_for: data.positionAppliedFor,
       addresses: data.addresses.map((addr) => ({
         address: addr.address,
@@ -116,12 +118,23 @@ export const useFormSubmission = () => {
       jobs: data.jobs.map((job) => ({
         employerName: job.employerName,
         positionHeld: job.positionHeld,
+        companyEmail: job.companyEmail || undefined,
         fromMonth: Number(job.fromMonth),
         fromYear: Number(job.fromYear),
         toMonth: Number(job.toMonth),
         toYear: Number(job.toYear),
       })),
       social_security_number: data.socialSecurityNumber,
+      // Include consent flags in initial submission
+      fair_credit_reporting_act_consent:
+        data.fairCreditReportingActConsentSignatureConsent || false,
+      fmcsa_clearinghouse_consent:
+        data.fmcsaClearinghouseConsentSignatureConsent || false,
+      motor_vehicle_record_consent:
+        data.motorVehicleRecordConsentSignatureConsent || false,
+      drug_test_consent: data.drugTestConsentSignatureConsent || false,
+      drug_test_question: data.drugTestQuestion || "",
+      general_consent: data.generalConsentSignatureConsent || false,
       // Don't include signature data in initial submission - we'll add it after uploads
     };
   };
@@ -131,14 +144,27 @@ export const useFormSubmission = () => {
       // Step 1: Submit the form data to create the application
       const formattedData = formatFormData(data);
 
+      // Get device information for the application
+      const deviceInfo = getDeviceInfo();
+
+      // Include device information in the application submission
+      const applicationDataWithDeviceInfo = {
+        ...formattedData,
+        device_info: deviceInfo,
+      };
+
+      console.log("Submitting formatted data:", applicationDataWithDeviceInfo);
+
       const submitResponse = await apiRequest(
         "POST",
         "/api/v1/driver-applications",
-        formattedData
+        applicationDataWithDeviceInfo
       );
 
       if (!submitResponse.ok) {
-        throw new Error("Failed to create application");
+        const errorData = await submitResponse.json().catch(() => ({}));
+        console.error("Server error response:", errorData);
+        throw new Error(errorData.message || "Failed to create application");
       }
 
       const submitResult = await submitResponse.json();
@@ -159,18 +185,18 @@ export const useFormSubmission = () => {
       const signatureUploads = [];
       const signatureUpdates: any = {};
 
-      // Background check consent signature
+      // Fair Credit Reporting Act consent signature
       if (
-        data.backgroundCheckConsentSignature?.data &&
-        !data.backgroundCheckConsentSignature.uploaded
+        data.fairCreditReportingActConsentSignature?.data &&
+        !data.fairCreditReportingActConsentSignature.uploaded
       ) {
         const uploadResult = await uploadSignature(
-          data.backgroundCheckConsentSignature.data,
+          data.fairCreditReportingActConsentSignature.data,
           applicationId,
-          "background-check-consent"
+          "fair-credit-reporting-act-consent"
         );
-        signatureUpdates.background_check_consent_signature = {
-          ...data.backgroundCheckConsentSignature,
+        signatureUpdates.fair_credit_reporting_act_consent_signature = {
+          ...data.fairCreditReportingActConsentSignature,
           uploaded: true,
           url: uploadResult.data.url,
           signedUrl: uploadResult.data.signedUrl,
@@ -178,18 +204,18 @@ export const useFormSubmission = () => {
         };
       }
 
-      // Employment consent signature
+      // FMCSA Clearinghouse consent signature
       if (
-        data.employmentConsentSignature?.data &&
-        !data.employmentConsentSignature.uploaded
+        data.fmcsaClearinghouseConsentSignature?.data &&
+        !data.fmcsaClearinghouseConsentSignature.uploaded
       ) {
         const uploadResult = await uploadSignature(
-          data.employmentConsentSignature.data,
+          data.fmcsaClearinghouseConsentSignature.data,
           applicationId,
-          "employment-consent"
+          "fmcsa-clearinghouse-consent"
         );
-        signatureUpdates.employment_consent_signature = {
-          ...data.employmentConsentSignature,
+        signatureUpdates.fmcsa_clearinghouse_consent_signature = {
+          ...data.fmcsaClearinghouseConsentSignature,
           uploaded: true,
           url: uploadResult.data.url,
           signedUrl: uploadResult.data.signedUrl,

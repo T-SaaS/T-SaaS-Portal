@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { RequiredLabel } from "@/atoms/RequiredLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { PhotoCapture } from "@/molecules/PhotoCapture";
 import { states, positions } from "@shared/utilities/globalConsts";
 import type { DriverFormValues } from "@/types/driverApplicationForm";
 
@@ -49,6 +50,22 @@ export function LicenseInfoStep({ control, className }: LicenseInfoStepProps) {
     fieldState: { error: medicalCardExpirationError },
   } = useController({
     name: "medicalCardExpirationDate",
+    control,
+  });
+
+  const {
+    field: licensePhotoField,
+    fieldState: { error: licensePhotoError },
+  } = useController({
+    name: "licensePhoto",
+    control,
+  });
+
+  const {
+    field: medicalCardPhotoField,
+    fieldState: { error: medicalCardPhotoError },
+  } = useController({
+    name: "medicalCardPhoto",
     control,
   });
 
@@ -186,6 +203,29 @@ export function LicenseInfoStep({ control, className }: LicenseInfoStepProps) {
           {positionError && (
             <p className="text-sm text-red-500 mt-1">{positionError.message}</p>
           )}
+        </div>
+      </div>
+
+      {/* Photo Upload Section */}
+      <div className="space-y-6">
+        <h3 className="text-lg font-medium text-slate-900">Document Photos</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <PhotoCapture
+            value={licensePhotoField.value}
+            onChange={licensePhotoField.onChange}
+            label="Driver's License Photo"
+            required
+            error={licensePhotoError?.message}
+          />
+
+          <PhotoCapture
+            value={medicalCardPhotoField.value}
+            onChange={medicalCardPhotoField.onChange}
+            label="Medical Card Photo"
+            required
+            error={medicalCardPhotoError?.message}
+          />
         </div>
       </div>
     </div>
