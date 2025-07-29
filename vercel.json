@@ -5,7 +5,7 @@
       "src": "server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["shared/**/*"]
+        "includeFiles": "shared/**/*"
       }
     },
     {
@@ -28,7 +28,7 @@
   ],
   "functions": {
     "server/index.ts": {
-      "includeFiles": ["shared/**/*"]
+      "includeFiles": "shared/**/*"
     }
   },
   "env": {
