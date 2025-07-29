@@ -26,6 +26,8 @@ export const getStepFields = (step: number): (keyof DriverFormValues)[] => {
         "licenseExpirationDate",
         "medicalCardExpirationDate",
         "positionAppliedFor",
+        "licensePhoto",
+        "medicalCardPhoto",
       ];
     case 3:
       return ["addresses"];
@@ -33,12 +35,21 @@ export const getStepFields = (step: number): (keyof DriverFormValues)[] => {
       return ["jobs"];
     case 5:
       return [
-        "backgroundCheckConsentSignature",
-        "employmentConsentSignature",
-        "drugTestConsentSignature",
+        "fairCreditReportingActConsentSignatureConsent",
+        "fairCreditReportingActConsentSignature",
+        "fmcsaClearinghouseConsentSignatureConsent",
+        "fmcsaClearinghouseConsentSignature",
+        "motorVehicleRecordConsentSignatureConsent",
         "motorVehicleRecordConsentSignature",
-        "generalConsentSignature",
       ];
+    case 6:
+      return [
+        "drugTestConsentSignatureConsent",
+        "drugTestConsentSignature",
+        "drugTestQuestion",
+      ];
+    case 7:
+      return ["generalConsentSignatureConsent", "generalConsentSignature"];
     default:
       return [];
   }
@@ -67,13 +78,23 @@ export const stepConfigs: FormStepConfig[] = [
   },
   {
     title: "Employment History",
-    label: "Employment",
+    label: "Employment History",
     fields: getStepFields(4),
   },
   {
-    title: "Consents & Signatures",
-    label: "Consents",
+    title: "Background Check Consents",
+    label: "Background Consents",
     fields: getStepFields(5),
+  },
+  {
+    title: "Drug & Alcohol Testing Consent",
+    label: "Drug Testing Consent",
+    fields: getStepFields(6),
+  },
+  {
+    title: "General Application Consent",
+    label: "General Consent",
+    fields: getStepFields(7),
   },
 ];
 

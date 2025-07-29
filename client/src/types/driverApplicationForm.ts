@@ -41,6 +41,8 @@ export type DriverFormValues = {
   licenseExpirationDate: string;
   medicalCardExpirationDate: string;
   positionAppliedFor: string;
+  licensePhoto: string | null; // Base64 image data
+  medicalCardPhoto: string | null; // Base64 image data
 
   // Step 4: Address History
   addresses: Address[];
@@ -48,15 +50,25 @@ export type DriverFormValues = {
   // Step 5: Employment History
   jobs: Job[];
 
-  // Step 6: Consents & Signatures
-  backgroundCheckConsentSignature: SignatureData;
-  employmentConsentSignature: SignatureData;
-  drugTestConsentSignature: SignatureData;
+  // Step 5: Background Check Consents
+  fairCreditReportingActConsentSignature: SignatureData;
+  fairCreditReportingActConsentSignatureConsent: boolean;
+  fmcsaClearinghouseConsentSignature: SignatureData;
+  fmcsaClearinghouseConsentSignatureConsent: boolean;
   motorVehicleRecordConsentSignature: SignatureData;
+  motorVehicleRecordConsentSignatureConsent: boolean;
+
+  // Step 6: Drug & Alcohol Testing Consent
+  drugTestConsentSignature: SignatureData;
+  drugTestConsentSignatureConsent: boolean;
+  drugTestQuestion: string;
+
+  // Step 7: General Application Consent
   generalConsentSignature: SignatureData;
+  generalConsentSignatureConsent: boolean;
 };
 
-export type FormStep = 0 | 1 | 2 | 3 | 4 | 5;
+export type FormStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type FormStepConfig = {
   title: string;

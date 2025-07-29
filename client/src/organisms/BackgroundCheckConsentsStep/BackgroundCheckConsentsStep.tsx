@@ -1,29 +1,24 @@
 import React from "react";
-import { EmpAlcoholDrugStatemetSignatureConsent } from "@/components/EmpAlcoholDrugStatemetSignatureConsent";
 import { SignatureConsent } from "@/components/SignatureConsent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import { ImportantDisclosureStep } from "@/components/ImportantDisclosureStep";
 
-interface ApplicationConsentsStepProps {
+interface BackgroundCheckConsentsStepProps {
   companyName?: string;
   driverName?: string;
 }
 
-export const ApplicationConsentsStep: React.FC<
-  ApplicationConsentsStepProps
+export const BackgroundCheckConsentsStep: React.FC<
+  BackgroundCheckConsentsStepProps
 > = ({ companyName, driverName }) => {
   return (
     <div className="space-y-6">
-      {/* Header Information */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Please review and sign each consent form below. These consents are
-          required for your driver application. You can sign each consent
-          individually, and you'll have the option to review and modify
-          signatures before final submission.
+          Please review and sign the background check consent forms below. These
+          are required for employment verification and background screening.
         </AlertDescription>
       </Alert>
 
@@ -45,15 +40,6 @@ export const ApplicationConsentsStep: React.FC<
         required={true}
       />
 
-      {/* Pre-Employment Employee Alcohol & Drug Test Statement */}
-      <EmpAlcoholDrugStatemetSignatureConsent
-        title="Pre-Employment Employee Alcohol & Drug Test Statement"
-        description="49 CFR Part 40.25(j) states, as the employer, you must ask the employee whether he or she has tested positive, or refused to test, on any pre-employment drug or alcohol test administered by an employer to which the employee applied for, but did not obtain, safety-sensitive transportation work covered by DOT agency drug and alcohol testing rules during the past two years. If the employee admits that he or she had a positive test or a refusal to test, you must not use the employee to perform safety-sensitive functions for you, until and unless the employee documents successful completion of the return-to-duty process required in 49 CFR Subpart O."
-        consentText={`I, ${driverName}, as the prospective employee, certify that:`}
-        fieldName="drugTestConsentSignature"
-        required={true}
-      />
-
       {/* Motor Vehicle Record Consent */}
       <SignatureConsent
         title="Motor Vehicle Record Consent"
@@ -63,28 +49,23 @@ export const ApplicationConsentsStep: React.FC<
         required={true}
       />
 
-      {/* General Application Consent */}
-      <ImportantDisclosureStep
-        companyName={companyName}
-        required={true}
-      />
-
       {/* Summary Card */}
       <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
-          <CardTitle className="text-blue-900">Consent Summary</CardTitle>
+          <CardTitle className="text-blue-900">
+            Background Check Consents
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             <p className="text-blue-800">
-              <strong>Required Consents:</strong> All 5 consent forms above must
-              be signed to proceed.
+              <strong>Required Consents:</strong> All 3 background check consent
+              forms above must be signed to proceed.
             </p>
             <p className="text-blue-700">
-              <strong>Next Steps:</strong> After submitting your application,
-              we'll initiate the background check process. You'll receive
-              updates via email and can track the status in your applicant
-              portal.
+              <strong>Purpose:</strong> These consents allow us to verify your
+              background, employment history, and driving record as required for
+              commercial driver positions.
             </p>
           </div>
         </CardContent>

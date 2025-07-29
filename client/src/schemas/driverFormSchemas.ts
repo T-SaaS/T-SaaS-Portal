@@ -62,6 +62,18 @@ export const stepSchemas = [
         }
       ),
     positionAppliedFor: Yup.string().required("Position is required"),
+    licensePhoto: Yup.string()
+      .required("Driver's License photo is required")
+      .test("valid-image", "Please provide a valid image", function (value) {
+        if (!value) return false;
+        return value.startsWith("data:image/");
+      }),
+    medicalCardPhoto: Yup.string()
+      .required("Medical Card photo is required")
+      .test("valid-image", "Please provide a valid image", function (value) {
+        if (!value) return false;
+        return value.startsWith("data:image/");
+      }),
   }),
 
   // Step 4: Address History
@@ -107,11 +119,14 @@ export const stepSchemas = [
       .min(1, "At least one job is required"),
   }),
 
-  // Step 6: Consents & Signatures
+  // Step 5: Background Check Consents
   Yup.object().shape({
-    backgroundCheckConsentSignature: Yup.object().shape({
+    fairCreditReportingActConsentSignatureConsent: Yup.boolean()
+      .required("Fair Credit Reporting Act consent is required")
+      .oneOf([true], "You must consent to the Fair Credit Reporting Act"),
+    fairCreditReportingActConsentSignature: Yup.object().shape({
       data: Yup.string()
-        .required("Background check consent signature is required")
+        .required("Fair Credit Reporting Act consent signature is required")
         .test(
           "valid-signature",
           "Please provide a valid signature",
@@ -121,9 +136,12 @@ export const stepSchemas = [
           }
         ),
     }),
-    employmentConsentSignature: Yup.object().shape({
+    fmcsaClearinghouseConsentSignatureConsent: Yup.boolean()
+      .required("FMCSA Clearinghouse consent is required")
+      .oneOf([true], "You must consent to the FMCSA Clearinghouse query"),
+    fmcsaClearinghouseConsentSignature: Yup.object().shape({
       data: Yup.string()
-        .required("Employment consent signature is required")
+        .required("FMCSA Clearinghouse consent signature is required")
         .test(
           "valid-signature",
           "Please provide a valid signature",
@@ -133,18 +151,9 @@ export const stepSchemas = [
           }
         ),
     }),
-    drugTestConsentSignature: Yup.object().shape({
-      data: Yup.string()
-        .required("Drug test consent signature is required")
-        .test(
-          "valid-signature",
-          "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
-        ),
-    }),
+    motorVehicleRecordConsentSignatureConsent: Yup.boolean()
+      .required("Motor vehicle record consent is required")
+      .oneOf([true], "You must consent to motor vehicle record checks"),
     motorVehicleRecordConsentSignature: Yup.object().shape({
       data: Yup.string()
         .required("Motor vehicle record consent signature is required")
@@ -157,6 +166,35 @@ export const stepSchemas = [
           }
         ),
     }),
+  }),
+
+  // Step 6: Drug & Alcohol Testing Consent
+  Yup.object().shape({
+    drugTestConsentSignatureConsent: Yup.boolean()
+      .required("Drug test consent is required")
+      .oneOf([true], "You must consent to drug and alcohol testing"),
+    drugTestConsentSignature: Yup.object().shape({
+      data: Yup.string()
+        .required("Drug test consent signature is required")
+        .test(
+          "valid-signature",
+          "Please provide a valid signature",
+          function (value) {
+            if (!value) return false;
+            return value.startsWith("data:image/");
+          }
+        ),
+    }),
+    drugTestQuestion: Yup.string()
+      .required("Drug test question must be answered")
+      .oneOf(["yes", "no"], "Please select Yes or No"),
+  }),
+
+  // Step 7: General Application Consent
+  Yup.object().shape({
+    generalConsentSignatureConsent: Yup.boolean()
+      .required("General application consent is required")
+      .oneOf([true], "You must consent to the general application terms"),
     generalConsentSignature: Yup.object().shape({
       data: Yup.string()
         .required("General consent signature is required")
@@ -225,6 +263,18 @@ export const completeFormSchema = Yup.object().shape({
       return expirationDate >= today;
     }),
   positionAppliedFor: Yup.string().required("Position is required"),
+  licensePhoto: Yup.string()
+    .nullable()
+    .test("valid-image", "Please provide a valid image", function (value) {
+      if (!value) return true; // Allow null/empty
+      return value.startsWith("data:image/");
+    }),
+  medicalCardPhoto: Yup.string()
+    .nullable()
+    .test("valid-image", "Please provide a valid image", function (value) {
+      if (!value) return true; // Allow null/empty
+      return value.startsWith("data:image/");
+    }),
 
   // Step 4: Address History
   addresses: Yup.array().of(
@@ -262,10 +312,13 @@ export const completeFormSchema = Yup.object().shape({
     )
     .min(1, "At least one job is required"),
 
-  // Step 6: Consents & Signatures
-  backgroundCheckConsentSignature: Yup.object().shape({
+  // Step 6: Background Check Consents
+  fairCreditReportingActConsentSignatureConsent: Yup.boolean()
+    .required("Fair Credit Reporting Act consent is required")
+    .oneOf([true], "You must consent to the Fair Credit Reporting Act"),
+  fairCreditReportingActConsentSignature: Yup.object().shape({
     data: Yup.string()
-      .required("Background check consent signature is required")
+      .required("Fair Credit Reporting Act consent signature is required")
       .test(
         "valid-signature",
         "Please provide a valid signature",
@@ -275,9 +328,12 @@ export const completeFormSchema = Yup.object().shape({
         }
       ),
   }),
-  employmentConsentSignature: Yup.object().shape({
+  fmcsaClearinghouseConsentSignatureConsent: Yup.boolean()
+    .required("FMCSA Clearinghouse consent is required")
+    .oneOf([true], "You must consent to the FMCSA Clearinghouse query"),
+  fmcsaClearinghouseConsentSignature: Yup.object().shape({
     data: Yup.string()
-      .required("Employment consent signature is required")
+      .required("FMCSA Clearinghouse consent signature is required")
       .test(
         "valid-signature",
         "Please provide a valid signature",
@@ -287,18 +343,9 @@ export const completeFormSchema = Yup.object().shape({
         }
       ),
   }),
-  drugTestConsentSignature: Yup.object().shape({
-    data: Yup.string()
-      .required("Drug test consent signature is required")
-      .test(
-        "valid-signature",
-        "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
-      ),
-  }),
+  motorVehicleRecordConsentSignatureConsent: Yup.boolean()
+    .required("Motor vehicle record consent is required")
+    .oneOf([true], "You must consent to motor vehicle record checks"),
   motorVehicleRecordConsentSignature: Yup.object().shape({
     data: Yup.string()
       .required("Motor vehicle record consent signature is required")
@@ -311,6 +358,31 @@ export const completeFormSchema = Yup.object().shape({
         }
       ),
   }),
+
+  // Step 7: Drug & Alcohol Testing Consent
+  drugTestConsentSignatureConsent: Yup.boolean()
+    .required("Drug test consent is required")
+    .oneOf([true], "You must consent to drug and alcohol testing"),
+  drugTestConsentSignature: Yup.object().shape({
+    data: Yup.string()
+      .required("Drug test consent signature is required")
+      .test(
+        "valid-signature",
+        "Please provide a valid signature",
+        function (value) {
+          if (!value) return false;
+          return value.startsWith("data:image/");
+        }
+      ),
+  }),
+  drugTestQuestion: Yup.string()
+    .required("Drug test question must be answered")
+    .oneOf(["yes", "no"], "Please select Yes or No"),
+
+  // Step 8: General Application Consent
+  generalConsentSignatureConsent: Yup.boolean()
+    .required("General application consent is required")
+    .oneOf([true], "You must consent to the general application terms"),
   generalConsentSignature: Yup.object().shape({
     data: Yup.string()
       .required("General consent signature is required")

@@ -10,6 +10,7 @@ interface SignaturePadProps {
   className?: string;
   showClearButton?: boolean;
   showCard?: boolean;
+  initialSignatureData?: string | null;
 }
 
 export const SignaturePadComponent: React.FC<SignaturePadProps> = ({
@@ -19,6 +20,7 @@ export const SignaturePadComponent: React.FC<SignaturePadProps> = ({
   className = "",
   showClearButton = true,
   showCard = true,
+  initialSignatureData = null,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
@@ -57,6 +59,14 @@ export const SignaturePadComponent: React.FC<SignaturePadProps> = ({
       };
     }
   }, []);
+
+  // Restore initial signature data
+  useEffect(() => {
+    if (signaturePadRef.current && initialSignatureData) {
+      signaturePadRef.current.fromDataURL(initialSignatureData);
+      setHasSignature(true);
+    }
+  }, [initialSignatureData]);
 
   // Handle signature changes using SignaturePad's built-in events
   useEffect(() => {
