@@ -18,5 +18,10 @@
       "src": "/(.*)",
       "dest": "/server/index.ts"
     }
-  ]
+  ],
+  "functions": {
+    "server/index.ts": {
+      "includeFiles": "shared/**/*"
+    }
+  }
 }

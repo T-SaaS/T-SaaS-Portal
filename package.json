@@ -8,8 +8,9 @@
     "dev:server": "nodemon",
     "dev:client": "vite",
     "build": "vite build",
-    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:server": "tsc --project tsconfig.server.json && node -e \"require('fs').cpSync('shared', 'dist/shared', {recursive: true})\"",
     "vercel-build": "npm run build",
+    "preview": "vite preview",
     "start": "node dist/index.js",
     "check": "tsc"
   },
