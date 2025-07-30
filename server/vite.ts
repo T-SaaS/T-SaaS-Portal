@@ -1,10 +1,10 @@
 import express, { type Express } from "express";
 import fs from "fs";
-import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import path from "path";
+import { createLogger, createServer as createViteServer } from "vite";
+import viteConfig from "../vite.config";
 
 const viteLogger = createLogger();
 
@@ -49,14 +49,14 @@ export async function setupVite(app: Express, server: Server) {
         import.meta.dirname,
         "..",
         "client",
-        "index.html",
+        "index.html"
       );
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
+        `src="/src/main.tsx?v=${nanoid()}"`
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
@@ -68,12 +68,17 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    console.warn(
+      `Could not find the build directory: ${distPath}, serving API only`
     );
+    // Don't throw error, just serve API routes
+    app.use("*", (_req, res) => {
+      res.status(404).json({ message: "Not found" });
+    });
+    return;
   }
 
   app.use(express.static(distPath));

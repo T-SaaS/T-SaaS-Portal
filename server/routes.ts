@@ -22,6 +22,15 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Apply Apollo middleware
   app.use("/graphql", json(), expressMiddleware(server));
 
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+    });
+  });
+
   // Submit driver application
   app.post("/api/v1/driver-applications", async (req, res) => {
     try {

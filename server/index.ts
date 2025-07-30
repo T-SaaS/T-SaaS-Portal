@@ -76,7 +76,15 @@ process.on("unhandledRejection", (reason, promise) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      serveStatic(app);
+      try {
+        serveStatic(app);
+      } catch (error) {
+        log(`Error setting up static files: ${error}`);
+        // Fallback: serve API only
+        app.use("*", (_req, res) => {
+          res.status(404).json({ message: "Not found" });
+        });
+      }
     }
 
     // ALWAYS serve the app on port 5000
