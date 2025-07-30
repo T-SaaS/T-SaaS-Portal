@@ -68,11 +68,24 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // Try multiple possible paths for static files
+  const possiblePaths = [
+    path.resolve(import.meta.dirname, "public"), // For local development
+    path.resolve(import.meta.dirname, "..", "public"), // For Vercel deployment
+    path.resolve(process.cwd(), "public"), // Fallback
+  ];
 
-  if (!fs.existsSync(distPath)) {
+  let distPath = null;
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      distPath = testPath;
+      break;
+    }
+  }
+
+  if (!distPath) {
     console.warn(
-      `Could not find the build directory: ${distPath}, serving API only`
+      `Could not find the build directory, tried: ${possiblePaths.join(", ")}, serving API only`
     );
     // Don't throw error, just serve API routes
     app.use("*", (_req, res) => {
@@ -81,6 +94,7 @@ export function serveStatic(app: Express) {
     return;
   }
 
+  console.log(`Serving static files from: ${distPath}`);
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
