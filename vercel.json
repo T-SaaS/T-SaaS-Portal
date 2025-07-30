@@ -7,12 +7,20 @@
       "config": {
         "maxDuration": 30
       }
+    },
+    {
+      "src": "dist/public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/dist/index.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/dist/public/assets/$1"
     },
     {
       "src": "/(.*)",
