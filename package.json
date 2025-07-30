@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon",
     "dev:client": "vite",
-    "build": "vite build",
+    "build": "vite build && tsc --project tsconfig.server.json && node -e \"require('fs').cpSync('shared', 'dist/shared', {recursive: true})\"",
     "build:server": "tsc --project tsconfig.server.json && node -e \"require('fs').cpSync('shared', 'dist/shared', {recursive: true})\"",
     "vercel-build": "npm run build",
     "preview": "vite preview",
