@@ -167,9 +167,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Get driver application by ID
   app.get("/api/v1/driver-applications/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
 
-      if (isNaN(id) || id <= 0) {
+      if (!id || id.trim() === "") {
         return res.status(400).json({
           success: false,
           message: "Invalid application ID",
@@ -218,13 +218,13 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Update driver application
   app.put("/api/v1/driver-applications/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
 
       // For signature updates, we only need to validate the signature fields
       // Check if this is a signature-only update
       const hasSignatureFields =
-        req.body.background_check_consent_signature ||
-        req.body.employment_consent_signature ||
+        req.body.fair_credit_reporting_act_consent_signature ||
+        req.body.fmcsa_clearinghouse_consent_signature ||
         req.body.drug_test_consent_signature ||
         req.body.motor_vehicle_record_consent_signature ||
         req.body.general_consent_signature;
@@ -239,7 +239,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         // This is a signature update - only validate signature fields
         // For updates, we don't need the data field since it's already uploaded
         const signatureUpdateSchema = z.object({
-          background_check_consent_signature: z
+          fair_credit_reporting_act_consent_signature: z
             .object({
               uploaded: z.boolean(),
               url: z.string().optional(),
@@ -248,7 +248,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
               timestamp: z.string().optional(),
             })
             .optional(),
-          employment_consent_signature: z
+          fmcsa_clearinghouse_consent_signature: z
             .object({
               uploaded: z.boolean(),
               url: z.string().optional(),
@@ -363,9 +363,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Get background check status
   app.get("/api/driver-applications/:id/background-check", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
 
-      if (isNaN(id) || id <= 0) {
+      if (!id || id.trim() === "") {
         return res.status(400).json({
           success: false,
           message: "Invalid application ID",
@@ -833,9 +833,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     "/api/v1/driver-applications/:id/signatures/for-editing",
     async (req, res) => {
       try {
-        const id = parseInt(req.params.id);
+        const id = req.params.id;
 
-        if (isNaN(id) || id <= 0) {
+        if (!id || id.trim() === "") {
           return res.status(400).json({
             success: false,
             message: "Invalid application ID",

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // TypeScript interfaces for database types
 export interface Company {
-  id: number;
+  id: string; // Changed from number to string (UUID)
   name: string;
   slug: string;
   domain?: string;
@@ -41,8 +41,8 @@ export interface DeviceInfo {
 // Interface is defined via Zod schema below
 
 export interface DriverApplication {
-  id: number;
-  company_id: number;
+  id: string; // Changed from number to string (UUID)
+  company_id: string; // Changed from number to string (UUID)
   first_name: string;
   last_name: string;
   status: string;
@@ -64,6 +64,7 @@ export interface DriverApplication {
   jobs: Job[];
   // Background check fields
   social_security_number: string;
+  consent_to_background_check: boolean;
   background_check_status?: string; // pending, in_progress, completed, failed
   background_check_results?: BackgroundCheckResult;
   background_check_completed_at?: string;
@@ -174,7 +175,7 @@ export const signatureRequestDataSchema = z.object({
 
 // Zod schema for inserting new driver applications
 export const insertDriverApplicationSchema = z.object({
-  company_id: z.number().min(1, "Company ID is required"),
+  company_id: z.string().min(1, "Company ID is required"), // Changed from z.number() to z.string()
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   dob: z.string().min(1, "Date of birth is required"),

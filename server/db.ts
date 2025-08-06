@@ -36,7 +36,7 @@ export const supabase = createClient(
 export const db = {
   async createDriverApplication(data: InsertDriverApplication) {
     // Ensure company_id exists, default to 1 if not provided
-    const companyId = data.company_id || 1;
+    const companyId = data.company_id;
 
     const { data: application, error } = await supabase
       .from("driver_applications")
@@ -65,7 +65,7 @@ export const db = {
     return applications;
   },
 
-  async getDriverApplication(id: number) {
+  async getDriverApplication(id: string) {
     const { data: application, error } = await supabase
       .from("driver_applications")
       .select("*")
@@ -77,7 +77,7 @@ export const db = {
   },
 
   async updateDriverApplication(
-    id: number,
+    id: string,
     updates: Partial<DriverApplication>
   ) {
     const { data: application, error } = await supabase

@@ -37,13 +37,26 @@ export function ApplicationEditPage() {
     background_check_completed_at: "",
     addresses: [],
     jobs: [],
-    company_id: "", // Client-side uses string
+    company_id: "",
     status: "",
     submitted_at: "",
-    consent_to_background_check: 0,
-    // Add missing optional fields from schema
     background_check_status: "",
     background_check_results: undefined,
+    fair_credit_reporting_act_consent: false,
+    fmcsa_clearinghouse_consent: false,
+    motor_vehicle_record_consent: false,
+    drug_test_consent: false,
+    drug_test_question: "",
+    general_consent: false,
+    fair_credit_reporting_act_consent_signature: undefined,
+    fmcsa_clearinghouse_consent_signature: undefined,
+    motor_vehicle_record_consent_signature: undefined,
+    drug_test_consent_signature: undefined,
+    general_consent_signature: undefined,
+    license_photo: undefined,
+    medical_card_photo: undefined,
+    device_info: undefined,
+    ip_address: "",
   });
 
   // Fetch the application to edit
@@ -85,6 +98,32 @@ export function ApplicationEditPage() {
         submitted_at: applicationData.submitted_at || "",
         background_check_completed_at:
           applicationData.background_check_completed_at || "",
+        // Load new consent fields
+        fair_credit_reporting_act_consent:
+          applicationData.fair_credit_reporting_act_consent || false,
+        fmcsa_clearinghouse_consent:
+          applicationData.fmcsa_clearinghouse_consent || false,
+        motor_vehicle_record_consent:
+          applicationData.motor_vehicle_record_consent || false,
+        drug_test_consent: applicationData.drug_test_consent || false,
+        drug_test_question: applicationData.drug_test_question || "",
+        general_consent: applicationData.general_consent || false,
+        // Load new signature fields
+        fair_credit_reporting_act_consent_signature:
+          applicationData.fair_credit_reporting_act_consent_signature,
+        fmcsa_clearinghouse_consent_signature:
+          applicationData.fmcsa_clearinghouse_consent_signature,
+        motor_vehicle_record_consent_signature:
+          applicationData.motor_vehicle_record_consent_signature,
+        drug_test_consent_signature:
+          applicationData.drug_test_consent_signature,
+        general_consent_signature: applicationData.general_consent_signature,
+        // Load document photo fields
+        license_photo: applicationData.license_photo,
+        medical_card_photo: applicationData.medical_card_photo,
+        // Load device info fields
+        device_info: applicationData.device_info,
+        ip_address: applicationData.ip_address || "",
       });
     }
   }, [applicationData, applicationLoading]);
@@ -185,10 +224,7 @@ export function ApplicationEditPage() {
       // We need to send a complete object with the current application data
       const serverData = {
         // Required fields from insertDriverApplicationSchema
-        company_id: parseInt(
-          applicationData?.company_id?.toString() || "0",
-          10
-        ),
+        company_id: applicationData?.company_id?.toString() || "",
         first_name: formData.first_name || "",
         last_name: formData.last_name || "",
         dob: formData.dob || "",
@@ -203,14 +239,31 @@ export function ApplicationEditPage() {
           formData.current_address_from_year || new Date().getFullYear(),
         license_number: formData.license_number || "",
         license_state: formData.license_state || "",
+        license_expiration_date: formData.license_expiration_date || "",
+        medical_card_expiration_date:
+          formData.medical_card_expiration_date || "",
         position_applied_for: formData.position_applied_for || "",
         addresses: formData.addresses || [],
         jobs: formData.jobs || [],
         social_security_number:
           formData.social_security_number || "000-00-0000",
-        consent_to_background_check: formData.consent_to_background_check
-          ? 1
-          : 0,
+        consent_to_background_check:
+          formData.consent_to_background_check || false,
+        // New consent fields
+        fair_credit_reporting_act_consent:
+          formData.fair_credit_reporting_act_consent || false,
+        fmcsa_clearinghouse_consent:
+          formData.fmcsa_clearinghouse_consent || false,
+        motor_vehicle_record_consent:
+          formData.motor_vehicle_record_consent || false,
+        drug_test_consent: formData.drug_test_consent || false,
+        drug_test_question: formData.drug_test_question || "",
+        general_consent: formData.general_consent || false,
+        // Status fields
+        status: formData.status || "",
+        background_check_status: formData.background_check_status || "",
+        background_check_completed_at:
+          formData.background_check_completed_at || "",
       };
 
       console.log("Sending update data:", serverData);
@@ -603,7 +656,7 @@ export function ApplicationEditPage() {
               <input
                 id="consent_to_background_check"
                 type="checkbox"
-                checked={formData.consent_to_background_check === 1}
+                checked={formData.consent_to_background_check || false}
                 onChange={(e) =>
                   handleInputChange(
                     "consent_to_background_check",
@@ -652,6 +705,114 @@ export function ApplicationEditPage() {
                   }
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Consent Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Consent Management</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  id="fair_credit_reporting_act_consent"
+                  type="checkbox"
+                  checked={formData.fair_credit_reporting_act_consent || false}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "fair_credit_reporting_act_consent",
+                      e.target.checked
+                    )
+                  }
+                  className="rounded border-slate-300"
+                />
+                <Label htmlFor="fair_credit_reporting_act_consent">
+                  Fair Credit Reporting Act Consent
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  id="fmcsa_clearinghouse_consent"
+                  type="checkbox"
+                  checked={formData.fmcsa_clearinghouse_consent || false}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "fmcsa_clearinghouse_consent",
+                      e.target.checked
+                    )
+                  }
+                  className="rounded border-slate-300"
+                />
+                <Label htmlFor="fmcsa_clearinghouse_consent">
+                  FMCSA Clearinghouse Consent
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  id="motor_vehicle_record_consent"
+                  type="checkbox"
+                  checked={formData.motor_vehicle_record_consent || false}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "motor_vehicle_record_consent",
+                      e.target.checked
+                    )
+                  }
+                  className="rounded border-slate-300"
+                />
+                <Label htmlFor="motor_vehicle_record_consent">
+                  Motor Vehicle Record Consent
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  id="drug_test_consent"
+                  type="checkbox"
+                  checked={formData.drug_test_consent || false}
+                  onChange={(e) =>
+                    handleInputChange("drug_test_consent", e.target.checked)
+                  }
+                  className="rounded border-slate-300"
+                />
+                <Label htmlFor="drug_test_consent">
+                  Drug/Alcohol Testing Consent
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  id="general_consent"
+                  type="checkbox"
+                  checked={formData.general_consent || false}
+                  onChange={(e) =>
+                    handleInputChange("general_consent", e.target.checked)
+                  }
+                  className="rounded border-slate-300"
+                />
+                <Label htmlFor="general_consent">
+                  General Application Consent
+                </Label>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="drug_test_question">
+                Drug Test Question Response
+              </Label>
+              <select
+                id="drug_test_question"
+                value={formData.drug_test_question || ""}
+                onChange={(e) =>
+                  handleInputChange("drug_test_question", e.target.value)
+                }
+                className="w-full border border-slate-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select response</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
             </div>
           </CardContent>
         </Card>

@@ -88,7 +88,7 @@ export const useFormSubmission = () => {
 
   const formatFormData = (data: DriverFormValues): InsertDriverApplication => {
     return {
-      company_id: 1, // TODO: Get from context/params
+      company_id: "1", // TODO: Get from context/params - changed to string for UUID
       first_name: data.firstName,
       last_name: data.lastName,
       dob: data.dob,

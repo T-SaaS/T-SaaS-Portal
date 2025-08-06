@@ -479,25 +479,15 @@ export function ApplicationDetailsView({
           {(() => {
             // Find the earliest signature timestamp
             const signatures = [
-              application.background_check_consent_signature,
-              application.employment_consent_signature,
-              application.drug_test_consent_signature,
+              application.fair_credit_reporting_act_consent_signature,
+              application.fmcsa_clearinghouse_consent_signature,
               application.motor_vehicle_record_consent_signature,
+              application.drug_test_consent_signature,
               application.general_consent_signature,
             ];
 
             const timestamps = signatures
-              .map((sig) => {
-                if (typeof sig === "string") {
-                  try {
-                    const parsed = JSON.parse(sig);
-                    return parsed?.timestamp;
-                  } catch {
-                    return null;
-                  }
-                }
-                return sig?.timestamp;
-              })
+              .map((sig) => sig?.timestamp)
               .filter(Boolean)
               .sort();
 
@@ -515,100 +505,108 @@ export function ApplicationDetailsView({
             ) : null;
           })()}
 
-          {/* Signature checklist */}
-          <div className="space-y-2">
-            {[
-              {
-                type: "Background Check Consent",
-                signature: application.background_check_consent_signature,
-              },
-              {
-                type: "Employment Verification Consent",
-                signature: application.employment_consent_signature,
-              },
-              {
-                type: "Drug/Alcohol Testing Consent",
-                signature: application.drug_test_consent_signature,
-              },
-              {
-                type: "Motor Vehicle Record Consent",
-                signature: application.motor_vehicle_record_consent_signature,
-              },
-              {
-                type: "General Application Consent",
-                signature: application.general_consent_signature,
-              },
-            ].map((consent, index) => {
-              // Check if signature exists and has data
-              let signatureData: any = consent.signature;
+          {/* Consent Status */}
+          <div className="mb-4">
+            <h4 className="font-medium text-slate-900 mb-2">Consent Status</h4>
+            <div className="space-y-2">
+              {[
+                {
+                  type: "Fair Credit Reporting Act Consent",
+                  consent: application.fair_credit_reporting_act_consent,
+                  signature:
+                    application.fair_credit_reporting_act_consent_signature,
+                },
+                {
+                  type: "FMCSA Clearinghouse Consent",
+                  consent: application.fmcsa_clearinghouse_consent,
+                  signature: application.fmcsa_clearinghouse_consent_signature,
+                },
+                {
+                  type: "Motor Vehicle Record Consent",
+                  consent: application.motor_vehicle_record_consent,
+                  signature: application.motor_vehicle_record_consent_signature,
+                },
+                {
+                  type: "Drug/Alcohol Testing Consent",
+                  consent: application.drug_test_consent,
+                  signature: application.drug_test_consent_signature,
+                },
+                {
+                  type: "General Application Consent",
+                  consent: application.general_consent,
+                  signature: application.general_consent_signature,
+                },
+              ].map((item, index) => {
+                const hasConsent = item.consent === true;
+                const hasSignature = item.signature && item.signature.uploaded;
 
-              // If signature data is a string, try to parse it as JSON
-              if (typeof signatureData === "string") {
-                try {
-                  signatureData = JSON.parse(signatureData);
-                } catch (e) {
-                  signatureData = null;
-                }
-              }
-
-              const hasSignature =
-                signatureData &&
-                (signatureData.data ||
-                  signatureData.uploaded ||
-                  signatureData.url ||
-                  signatureData.path ||
-                  (typeof signatureData === "object" &&
-                    Object.keys(signatureData).length > 0));
-
-              return (
-                <div key={index} className="flex items-center gap-3">
-                  {hasSignature ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-gray-400" />
-                  )}
-                  <span className="text-slate-900">{consent.type}</span>
-                </div>
-              );
-            })}
+                return (
+                  <div key={index} className="flex items-center gap-3">
+                    {hasConsent && hasSignature ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-gray-400" />
+                    )}
+                    <span className="text-slate-900">{item.type}</span>
+                    {hasConsent && !hasSignature && (
+                      <span className="text-xs text-yellow-600">
+                        (Consent given, signature pending)
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
+          {/* Drug Test Question */}
+          {application.drug_test_question && (
+            <div className="mb-4">
+              <label className="text-sm font-medium text-slate-700">
+                Drug Test Question Response
+              </label>
+              <p className="text-slate-900 capitalize">
+                {application.drug_test_question}
+              </p>
+            </div>
+          )}
+
           {/* Device Type and IP Address */}
-          {(application.deviceInfo || application.ipAddress) && (
+          {(application.device_info || application.ip_address) && (
             <div className="mt-6 pt-6 border-t">
               <h4 className="font-medium text-slate-900 mb-4">
                 Device Information
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {application.deviceInfo && (
+                {application.device_info && (
                   <div>
                     <label className="text-sm font-medium text-slate-700">
                       Device Type
                     </label>
                     <div className="flex items-center gap-2">
-                      {application.deviceInfo.deviceType === "mobile" && (
+                      {application.device_info.deviceType === "mobile" && (
                         <Smartphone className="h-4 w-4 text-slate-600" />
                       )}
-                      {application.deviceInfo.deviceType === "tablet" && (
+                      {application.device_info.deviceType === "tablet" && (
                         <Tablet className="h-4 w-4 text-slate-600" />
                       )}
-                      {application.deviceInfo.deviceType === "desktop" && (
+                      {application.device_info.deviceType === "desktop" && (
                         <Monitor className="h-4 w-4 text-slate-600" />
                       )}
                       <span className="text-slate-900 capitalize">
-                        {application.deviceInfo.deviceType}
+                        {application.device_info.deviceType}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {application.ipAddress && (
+                {application.ip_address && (
                   <div>
                     <label className="text-sm font-medium text-slate-700">
                       IP Address
                     </label>
                     <p className="text-slate-900 font-mono text-xs">
-                      {application.ipAddress}
+                      {application.ip_address}
                     </p>
                   </div>
                 )}

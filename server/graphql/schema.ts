@@ -146,7 +146,7 @@ export const resolvers = {
       return await db.getAllDriverApplications();
     },
     driverApplication: async (_: any, { id }: { id: string }) => {
-      return await db.getDriverApplication(parseInt(id));
+      return await db.getDriverApplication(id);
     },
   },
   Mutation: {
@@ -157,7 +157,7 @@ export const resolvers = {
       _: any,
       { id, status }: { id: string; status: string }
     ) => {
-      return await db.updateDriverApplication(parseInt(id), {
+      return await db.updateDriverApplication(id, {
         background_check_status: status,
         background_check_completed_at: new Date().toISOString(),
       });
@@ -165,8 +165,7 @@ export const resolvers = {
   },
   DriverApplication: {
     id: (parent: DriverApplication) => parent.id.toString(),
-    submittedAt: (parent: DriverApplication) =>
-      parent.submitted_at,
+    submittedAt: (parent: DriverApplication) => parent.submitted_at,
     backgroundCheckCompletedAt: (parent: DriverApplication) =>
       parent.background_check_completed_at,
   },
