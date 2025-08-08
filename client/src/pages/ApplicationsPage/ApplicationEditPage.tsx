@@ -10,6 +10,7 @@ import { ApplicationNotFound } from "./ApplicationNotFound";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { DriverApplication } from "@/types";
 import { Address, Job } from "@shared/schema";
+import { PhotoCapture } from "@/molecules/PhotoCapture";
 
 export function ApplicationEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +39,7 @@ export function ApplicationEditPage() {
     addresses: [],
     jobs: [],
     company_id: "",
-    status: "",
+    status: "New" as const,
     submitted_at: "",
     background_check_status: "",
     background_check_results: undefined,
@@ -135,6 +136,16 @@ export function ApplicationEditPage() {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+  };
+
+  const handlePhotoChange = (
+    field: "license_photo" | "medical_card_photo",
+    value: string | null
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value ? { url: value, uploaded: true } : undefined,
     }));
   };
 
@@ -590,6 +601,32 @@ export function ApplicationEditPage() {
                   }
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Document Photos */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Document Photos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PhotoCapture
+                value={formData.license_photo?.url || null}
+                onChange={(value) => handlePhotoChange("license_photo", value)}
+                label="Driver's License Photo"
+                required={false}
+              />
+
+              <PhotoCapture
+                value={formData.medical_card_photo?.url || null}
+                onChange={(value) =>
+                  handlePhotoChange("medical_card_photo", value)
+                }
+                label="Medical Card Photo"
+                required={false}
+              />
             </div>
           </CardContent>
         </Card>

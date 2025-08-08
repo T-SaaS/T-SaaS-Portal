@@ -188,7 +188,7 @@ export function PrivateTemplate() {
               )}
               <h2 className="text-2xl font-bold text-slate-900">
                 {navigation.find((item) => item.href === location.pathname)
-                  ?.name || "Dashboard"}
+                  ?.name || ""}
               </h2>
             </div>
           </div>

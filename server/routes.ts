@@ -1,13 +1,61 @@
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
-import { insertDriverApplicationSchema } from "@shared/schema";
+import {
+  createDriverSchema,
+  insertDriverApplicationSchema,
+  updateDriverSchema,
+} from "@shared/schema";
 import express, { json } from "express";
+import rateLimit from "express-rate-limit";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { db, supabase } from "./db";
 import { resolvers, typeDefs } from "./graphql/schema";
+import { ApplicationStatusService } from "./services/applicationStatusService";
 import { emailService, EmailTemplateType } from "./services/emailService";
+import { LoggingService } from "./services/loggingService";
 import { getSignaturesForEditing } from "./utils/signatureUtils";
+
+// Rate limiting configuration
+const createRateLimiter = (windowMs: number, max: number, message?: string) => {
+  return rateLimit({
+    windowMs,
+    max,
+    message: {
+      error: "Too many requests",
+      message:
+        message || `Too many requests from this IP, please try again later.`,
+      retryAfter: Math.ceil(windowMs / 1000),
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+};
+
+// Rate limiters for different route types
+const authLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  5, // 5 requests per 15 minutes for auth routes
+  "Too many authentication attempts, please try again in 15 minutes."
+);
+
+const apiLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  50, // 50 requests per 15 minutes for API routes
+  "Too many API requests, please try again in 15 minutes."
+);
+
+const uploadLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  10, // 10 upload requests per 15 minutes
+  "Too many upload requests, please try again in 15 minutes."
+);
+
+const emailLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  20, // 20 email requests per 15 minutes
+  "Too many email requests, please try again in 15 minutes."
+);
 
 export async function registerRoutes(app: express.Express): Promise<Server> {
   // Create Apollo Server
@@ -31,8 +79,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     });
   });
 
-  // Submit driver application
-  app.post("/api/v1/driver-applications", async (req, res) => {
+  // Submit driver application (rate limited)
+  app.post("/api/v1/driver-applications", apiLimiter, async (req, res) => {
     try {
       // Capture IP address
       const ipAddress =
@@ -76,10 +124,40 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         deviceType: device_info?.deviceType,
       });
 
+      // Log the application creation
+      try {
+        const loggingService = new LoggingService(
+          await LoggingService.extractContextFromRequest(req)
+        );
+        await loggingService.log(
+          "driver_applications",
+          application.id,
+          "created",
+          { metadata: { company_id: application.company_id } }
+        );
+      } catch (logError) {
+        console.error("Failed to log application creation:", logError);
+        // Don't fail the request if logging fails
+      }
+
       // Initiate background check process
       if (application.consentToBackgroundCheck === 1) {
         console.log("Background check consent given, initiating process...");
         // backgroundCheckService.initiateBackgroundCheck(application.id);
+
+        // Log background check initiation
+        try {
+          const loggingService = new LoggingService(
+            await LoggingService.extractContextFromRequest(req)
+          );
+          await loggingService.log(
+            "driver_applications",
+            application.id,
+            "background_check_initiated"
+          );
+        } catch (logError) {
+          console.error("Failed to log background check initiation:", logError);
+        }
       }
 
       res.status(201).json({
@@ -136,8 +214,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Get all driver applications
-  app.get("/api/v1/driver-applications", async (req, res) => {
+  // Get all driver applications (rate limited)
+  app.get("/api/v1/driver-applications", apiLimiter, async (req, res) => {
     try {
       console.log("Fetching all driver applications...");
 
@@ -165,7 +243,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Get driver application by ID
-  app.get("/api/v1/driver-applications/:id", async (req, res) => {
+  app.get("/api/v1/driver-applications/:id", apiLimiter, async (req, res) => {
     try {
       const id = req.params.id;
 
@@ -216,7 +294,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Update driver application
-  app.put("/api/v1/driver-applications/:id", async (req, res) => {
+  app.put("/api/v1/driver-applications/:id", apiLimiter, async (req, res) => {
     try {
       const id = req.params.id;
 
@@ -323,7 +401,36 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
 
       console.log("Validated data:", validatedData);
+
+      // Get the original application to track changes
+      const originalApplication = await db.getDriverApplication(id);
+
       const application = await db.updateDriverApplication(id, validatedData);
+
+      // Log the application update
+      try {
+        const changes: Record<string, any> = {};
+
+        // Track what changed
+        Object.keys(validatedData).forEach((key) => {
+          const newValue = (validatedData as any)[key];
+          const oldValue = (originalApplication as any)[key];
+          if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+            changes[key] = { from: oldValue, to: newValue };
+          }
+        });
+
+        const loggingService = new LoggingService(
+          await LoggingService.extractContextFromRequest(req)
+        );
+        await loggingService.log("driver_applications", id, "updated", {
+          changes,
+        });
+      } catch (logError) {
+        console.error("Failed to log application update:", logError);
+        // Don't fail the request if logging fails
+      }
+
       res.json({
         success: true,
         message: "Application updated successfully",
@@ -422,8 +529,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Upload signature
-  app.post("/api/v1/signatures/upload", async (req, res) => {
+  // Upload signature (rate limited)
+  app.post("/api/v1/signatures/upload", uploadLimiter, async (req, res) => {
     try {
       const { signatureData, applicationId, companyName, signatureType } =
         req.body;
@@ -561,7 +668,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Upload document photo (license or medical card)
-  app.post("/api/v1/documents/upload", async (req, res) => {
+  app.post("/api/v1/documents/upload", uploadLimiter, async (req, res) => {
     try {
       const {
         photoData,
@@ -702,8 +809,175 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       });
     }
   });
+
+  // Application status management endpoints
+  app.post(
+    "/api/v1/driver-applications/:id/status/transition",
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { targetStatus, notes } = req.body;
+
+        const statusService = new ApplicationStatusService({
+          ...(await LoggingService.extractContextFromRequest(req)),
+          notes,
+        });
+
+        const result = await statusService.processStatusTransition(
+          id,
+          targetStatus
+        );
+
+        if (result.success) {
+          res.json({
+            success: true,
+            message: result.message,
+            data: { newStatus: result.newStatus },
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            message: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("Error processing status transition:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to process status transition",
+        });
+      }
+    }
+  );
+
+  app.put(
+    "/api/v1/driver-applications/:id/status",
+    apiLimiter,
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status, notes } = req.body;
+
+        if (!status) {
+          return res.status(400).json({
+            success: false,
+            message: "Status is required",
+          });
+        }
+
+        const context = await LoggingService.extractContextFromRequest(req);
+
+        const statusService = new ApplicationStatusService({
+          ...context,
+          notes,
+        });
+
+        const result = await statusService.setStatus(id, status, {
+          ...context,
+          notes,
+        });
+
+        if (result.success) {
+          res.json({
+            success: true,
+            message: result.message,
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            message: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("Error setting application status:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to set application status",
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/api/v1/driver-applications/:id/status/transitions",
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const application = await db.getDriverApplication(id);
+
+        if (!application) {
+          return res.status(404).json({
+            success: false,
+            message: "Application not found",
+          });
+        }
+
+        const statusService = new ApplicationStatusService();
+        const availableTransitions = statusService.getAvailableTransitions(
+          application.status
+        );
+
+        res.json({
+          success: true,
+          data: {
+            currentStatus: application.status,
+            availableTransitions,
+          },
+        });
+      } catch (error) {
+        console.error("Error getting available transitions:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to get available transitions",
+        });
+      }
+    }
+  );
+
+  app.post(
+    "/api/v1/driver-applications/:id/hire",
+    apiLimiter,
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { notes } = req.body;
+
+        const context = await LoggingService.extractContextFromRequest(req);
+
+        const statusService = new ApplicationStatusService({
+          ...context,
+          notes,
+        });
+
+        const result = await statusService.hireDriver(id, {
+          ...context,
+          notes,
+        });
+
+        if (result.success) {
+          res.json({
+            success: true,
+            message: result.message,
+            data: { driverId: result.driverId },
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            message: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("Error hiring driver:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to hire driver",
+        });
+      }
+    }
+  );
+
   // Get all companies
-  app.get("/api/v1/companies", async (req, res) => {
+  app.get("/api/v1/companies", apiLimiter, async (req, res) => {
     try {
       console.log("Fetching all companies...");
 
@@ -909,11 +1183,347 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   );
 
+  // Driver API Routes
+  // ================
+
+  // Create driver from application
+  app.post("/api/v1/drivers", async (req, res) => {
+    try {
+      const validatedData = createDriverSchema.parse(req.body);
+      const driver = await db.createDriver(validatedData);
+
+      console.log("Driver created successfully:", {
+        id: driver.id,
+        applicationId: driver.application_id,
+        name: `${driver.first_name} ${driver.last_name}`,
+      });
+
+      // Log the driver creation
+      try {
+        const loggingService = new LoggingService(
+          await LoggingService.extractContextFromRequest(req)
+        );
+        await loggingService.log("drivers", driver.id, "created", {
+          metadata: {
+            application_id: driver.application_id,
+            company_id: driver.company_id,
+          },
+        });
+
+        // Log the application hire (conversion to driver)
+        await loggingService.log(
+          "driver_applications",
+          driver.application_id,
+          "hired",
+          { metadata: { driver_id: driver.id } }
+        );
+      } catch (logError) {
+        console.error("Failed to log driver creation:", logError);
+        // Don't fail the request if logging fails
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Driver created successfully",
+        data: driver,
+      });
+    } catch (error) {
+      console.error("Error in POST /api/v1/drivers:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        body: req.body,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: "Validation error",
+          error: "VALIDATION_ERROR",
+          details: error.errors,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Internal server error",
+          error: "UNKNOWN_ERROR",
+        });
+      }
+    }
+  });
+
+  // Get all drivers with pagination
+  app.get("/api/v1/drivers", apiLimiter, async (req, res) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      console.log(`Fetching drivers page ${page} with limit ${limit}...`);
+
+      const { data: drivers, pagination } = await db.getAllDrivers(page, limit);
+      console.log(`Retrieved ${drivers.length} drivers`);
+
+      res.json({
+        success: true,
+        message: `Retrieved ${drivers.length} drivers`,
+        data: drivers,
+        pagination,
+      });
+    } catch (error) {
+      console.error("Error in GET /api/v1/drivers:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve drivers",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get driver by ID
+  app.get("/api/v1/drivers/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      if (!id || id.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid driver ID",
+          error: "INVALID_ID",
+        });
+      }
+
+      console.log(`Fetching driver with ID: ${id}`);
+
+      const driver = await db.getDriver(id);
+
+      if (!driver) {
+        console.log(`Driver with ID ${id} not found`);
+        return res.status(404).json({
+          success: false,
+          message: "Driver not found",
+          error: "NOT_FOUND",
+        });
+      }
+
+      console.log(`Retrieved driver: ${driver.first_name} ${driver.last_name}`);
+
+      res.json({
+        success: true,
+        message: "Driver retrieved successfully",
+        data: driver,
+      });
+    } catch (error) {
+      console.error(`Error in GET /api/v1/drivers/${req.params.id}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        id: req.params.id,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve driver",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update driver
+  app.put("/api/v1/drivers/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      if (!id || id.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid driver ID",
+          error: "INVALID_ID",
+        });
+      }
+
+      const validatedData = updateDriverSchema.parse(req.body);
+
+      // Get the original driver to track changes
+      const originalDriver = await db.getDriver(id);
+
+      const driver = await db.updateDriver(id, validatedData);
+
+      console.log(
+        `Driver updated successfully: ${driver.first_name} ${driver.last_name}`
+      );
+
+      // Log the driver update
+      try {
+        const changes: Record<string, any> = {};
+
+        // Track what changed
+        Object.keys(validatedData).forEach((key) => {
+          const newValue = (validatedData as any)[key];
+          const oldValue = (originalDriver as any)[key];
+          if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+            changes[key] = { from: oldValue, to: newValue };
+          }
+        });
+
+        // Special handling for status changes
+        const loggingService = new LoggingService(
+          await LoggingService.extractContextFromRequest(req)
+        );
+
+        if (
+          validatedData.status &&
+          validatedData.status !== originalDriver.status
+        ) {
+          await loggingService.log("drivers", id, "status_changed", {
+            changes: {
+              old_status: originalDriver.status,
+              new_status: validatedData.status,
+            },
+          });
+        }
+
+        // Log general update if there are changes
+        if (Object.keys(changes).length > 0) {
+          await loggingService.log("drivers", id, "updated", { changes });
+        }
+      } catch (logError) {
+        console.error("Failed to log driver update:", logError);
+        // Don't fail the request if logging fails
+      }
+
+      res.json({
+        success: true,
+        message: "Driver updated successfully",
+        data: driver,
+      });
+    } catch (error) {
+      console.error(`Error in PUT /api/v1/drivers/${req.params.id}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        id: req.params.id,
+        body: req.body,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: "Validation error",
+          error: "VALIDATION_ERROR",
+          details: error.errors,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Failed to update driver",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  });
+
+  // Delete driver
+  app.delete("/api/v1/drivers/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      if (!id || id.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid driver ID",
+          error: "INVALID_ID",
+        });
+      }
+
+      console.log(`Deleting driver with ID: ${id}`);
+
+      await db.deleteDriver(id);
+
+      console.log(`Driver deleted successfully: ${id}`);
+
+      res.json({
+        success: true,
+        message: "Driver deleted successfully",
+      });
+    } catch (error) {
+      console.error(`Error in DELETE /api/v1/drivers/${req.params.id}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        id: req.params.id,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete driver",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get drivers by company with pagination
+  app.get("/api/v1/companies/:companyId/drivers", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      if (!companyId || companyId.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid company ID",
+          error: "INVALID_COMPANY_ID",
+        });
+      }
+
+      console.log(
+        `Fetching drivers for company ${companyId}, page ${page} with limit ${limit}...`
+      );
+
+      const { data: drivers, pagination } = await db.getDriversByCompany(
+        companyId,
+        page,
+        limit
+      );
+      console.log(
+        `Retrieved ${drivers.length} drivers for company ${companyId}`
+      );
+
+      res.json({
+        success: true,
+        message: `Retrieved ${drivers.length} drivers`,
+        data: drivers,
+        pagination,
+      });
+    } catch (error) {
+      console.error(
+        `Error in GET /api/v1/companies/${req.params.companyId}/drivers:`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          companyId: req.params.companyId,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve drivers",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Email API Routes
   // ===============
 
   // Send template email
-  app.post("/api/v1/emails/send-template", async (req, res) => {
+  app.post("/api/v1/emails/send-template", emailLimiter, async (req, res) => {
     try {
       const { templateType, context, options } = req.body;
 
@@ -984,7 +1594,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Send custom email
-  app.post("/api/v1/emails/send-custom", async (req, res) => {
+  app.post("/api/v1/emails/send-custom", emailLimiter, async (req, res) => {
     try {
       const { to, from, subject, html, text } = req.body;
 
@@ -1048,46 +1658,49 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Send application submission emails (combines template + admin notification)
-  app.post("/api/v1/emails/application-submitted", async (req, res) => {
-    try {
-      const { application, company, adminEmail } = req.body;
+  app.post(
+    "/api/v1/emails/application-submitted",
+    emailLimiter,
+    async (req, res) => {
+      try {
+        const { application, company, adminEmail } = req.body;
 
-      if (!application || !company) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required fields: application and company",
-          error: "MISSING_REQUIRED_FIELDS",
+        if (!application || !company) {
+          return res.status(400).json({
+            success: false,
+            message: "Missing required fields: application and company",
+            error: "MISSING_REQUIRED_FIELDS",
+          });
+        }
+
+        console.log("Sending application submission emails", {
+          applicationId: application.id,
+          driverEmail: application.email,
+          adminEmail: adminEmail || "not provided",
         });
-      }
 
-      console.log("Sending application submission emails", {
-        applicationId: application.id,
-        driverEmail: application.email,
-        adminEmail: adminEmail || "not provided",
-      });
+        const emailContext = { driver: application, company };
 
-      const emailContext = { driver: application, company };
+        // Send confirmation email to applicant
+        const applicantEmailSuccess = await emailService.sendTemplateEmail(
+          EmailTemplateType.APPLICATION_SUBMITTED,
+          emailContext
+        );
 
-      // Send confirmation email to applicant
-      const applicantEmailSuccess = await emailService.sendTemplateEmail(
-        EmailTemplateType.APPLICATION_SUBMITTED,
-        emailContext
-      );
+        let adminEmailSuccess = true;
+        let adminEmailData = null;
 
-      let adminEmailSuccess = true;
-      let adminEmailData = null;
-
-      // Send notification to admin if email provided
-      if (adminEmail) {
-        adminEmailData = {
-          to: adminEmail,
-          from: process.env.DEFAULT_FROM_EMAIL || "noreply@trucking.mba",
-          subject: `New Driver Application - ${application.first_name} ${application.last_name}`,
-          html: `
+        // Send notification to admin if email provided
+        if (adminEmail) {
+          adminEmailData = {
+            to: adminEmail,
+            from: process.env.DEFAULT_FROM_EMAIL || "noreply@trucking.mba",
+            subject: `New Driver Application - ${application.first_name} ${application.last_name}`,
+            html: `
             <h2>New Driver Application Received</h2>
             <p><strong>Applicant:</strong> ${application.first_name} ${
-            application.last_name
-          }</p>
+              application.last_name
+            }</p>
             <p><strong>Position:</strong> ${
               application.position_applied_for
             }</p>
@@ -1099,126 +1712,134 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             ).toLocaleString()}</p>
             <p>Please review the application in the admin portal.</p>
           `,
-        };
+          };
 
-        adminEmailSuccess = await emailService.sendCustomEmail(adminEmailData);
-      }
+          adminEmailSuccess = await emailService.sendCustomEmail(
+            adminEmailData
+          );
+        }
 
-      if (applicantEmailSuccess && adminEmailSuccess) {
-        console.log("Application submission emails sent successfully");
-        res.json({
-          success: true,
-          message: "Application submission emails sent successfully",
-          data: {
-            applicantEmailSent: applicantEmailSuccess,
-            adminEmailSent: adminEmailSuccess,
-            timestamp: new Date().toISOString(),
-          },
+        if (applicantEmailSuccess && adminEmailSuccess) {
+          console.log("Application submission emails sent successfully");
+          res.json({
+            success: true,
+            message: "Application submission emails sent successfully",
+            data: {
+              applicantEmailSent: applicantEmailSuccess,
+              adminEmailSent: adminEmailSuccess,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } else {
+          console.error("Failed to send some application submission emails", {
+            applicantEmailSuccess,
+            adminEmailSuccess,
+          });
+          res.status(500).json({
+            success: false,
+            message: "Failed to send some emails",
+            error: "PARTIAL_EMAIL_FAILURE",
+            data: {
+              applicantEmailSent: applicantEmailSuccess,
+              adminEmailSent: adminEmailSuccess,
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Error in POST /api/v1/emails/application-submitted:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
         });
-      } else {
-        console.error("Failed to send some application submission emails", {
-          applicantEmailSuccess,
-          adminEmailSuccess,
-        });
+
         res.status(500).json({
           success: false,
-          message: "Failed to send some emails",
-          error: "PARTIAL_EMAIL_FAILURE",
-          data: {
-            applicantEmailSent: applicantEmailSuccess,
-            adminEmailSent: adminEmailSuccess,
-          },
+          message: "Internal server error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    } catch (error) {
-      console.error("Error in POST /api/v1/emails/application-submitted:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  });
+  );
 
   // Send background check emails
-  app.post("/api/v1/emails/background-check", async (req, res) => {
-    try {
-      const { action, application, company } = req.body;
+  app.post(
+    "/api/v1/emails/background-check",
+    emailLimiter,
+    async (req, res) => {
+      try {
+        const { action, application, company } = req.body;
 
-      if (!action || !application || !company) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required fields: action, application, and company",
-          error: "MISSING_REQUIRED_FIELDS",
+        if (!action || !application || !company) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Missing required fields: action, application, and company",
+            error: "MISSING_REQUIRED_FIELDS",
+          });
+        }
+
+        const validActions = ["initiated", "completed"];
+        if (!validActions.includes(action)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid action. Must be 'initiated' or 'completed'",
+            error: "INVALID_ACTION",
+            validActions,
+          });
+        }
+
+        console.log(`Sending background check ${action} email`, {
+          applicationId: application.id,
+          driverEmail: application.email,
         });
-      }
 
-      const validActions = ["initiated", "completed"];
-      if (!validActions.includes(action)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid action. Must be 'initiated' or 'completed'",
-          error: "INVALID_ACTION",
-          validActions,
+        const emailContext = { driver: application, company };
+        const templateType =
+          action === "initiated"
+            ? EmailTemplateType.BACKGROUND_CHECK_INITIATED
+            : EmailTemplateType.BACKGROUND_CHECK_COMPLETED;
+
+        const success = await emailService.sendTemplateEmail(
+          templateType,
+          emailContext
+        );
+
+        if (success) {
+          console.log(`Background check ${action} email sent successfully`);
+          res.json({
+            success: true,
+            message: `Background check ${action} email sent successfully`,
+            data: {
+              action,
+              sentTo: application.email,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } else {
+          console.error(`Failed to send background check ${action} email`);
+          res.status(500).json({
+            success: false,
+            message: "Failed to send email",
+            error: "EMAIL_SEND_FAILED",
+          });
+        }
+      } catch (error) {
+        console.error("Error in POST /api/v1/emails/background-check:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
         });
-      }
 
-      console.log(`Sending background check ${action} email`, {
-        applicationId: application.id,
-        driverEmail: application.email,
-      });
-
-      const emailContext = { driver: application, company };
-      const templateType =
-        action === "initiated"
-          ? EmailTemplateType.BACKGROUND_CHECK_INITIATED
-          : EmailTemplateType.BACKGROUND_CHECK_COMPLETED;
-
-      const success = await emailService.sendTemplateEmail(
-        templateType,
-        emailContext
-      );
-
-      if (success) {
-        console.log(`Background check ${action} email sent successfully`);
-        res.json({
-          success: true,
-          message: `Background check ${action} email sent successfully`,
-          data: {
-            action,
-            sentTo: application.email,
-            timestamp: new Date().toISOString(),
-          },
-        });
-      } else {
-        console.error(`Failed to send background check ${action} email`);
         res.status(500).json({
           success: false,
-          message: "Failed to send email",
-          error: "EMAIL_SEND_FAILED",
+          message: "Internal server error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    } catch (error) {
-      console.error("Error in POST /api/v1/emails/background-check:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  });
+  );
 
   // Get available email templates
   app.get("/api/v1/emails/templates", async (req, res) => {

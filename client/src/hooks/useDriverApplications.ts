@@ -24,40 +24,61 @@ export const useDriverApplications = () => {
 
       if (result.success) {
         // Transform the data to match our DriverApplication type
-        const transformedApplications = result.data.map((app: DriverApplication) => ({
-          id: app.id.toString(),
-          first_name: app.first_name,
-          last_name: app.last_name,
-          email: app.email,
-          phone: app.phone,
-          company_id: app.company_id?.toString(),
-          status: app.status || "pending",
-          submitted_at: app.submitted_at,
-          company: "", // This might need to be fetched separately
-          dob: app.dob,
-          position_applied_for: app.position_applied_for,
-          background_check_status: app.background_check_status,
-          current_address: app.current_address,
-          current_city: app.current_city,
-          current_state: app.current_state,
-          current_zip: app.current_zip,
-          current_address_from_month: app.current_address_from_month,
-          current_address_from_year: app.current_address_from_year,
-          license_number: app.license_number,
-          license_state: app.license_state,
-          license_expiration_date: app.license_expiration_date,
-          medical_card_expiration_date: app.medical_card_expiration_date,
-          addresses: app.addresses,
-          jobs: app.jobs,
-          social_security_number: app.social_security_number,
-          background_check_consent_signature: app.background_check_consent_signature,
-          employment_consent_signature: app.employment_consent_signature,
-          drug_test_consent_signature: app.drug_test_consent_signature,
-          motor_vehicle_record_consent_signature: app.motor_vehicle_record_consent_signature,
-          general_consent_signature: app.general_consent_signature,
-          deviceInfo: app.deviceInfo,
-          ipAddress: app.ipAddress,
-        }));
+        const transformedApplications = result.data.map(
+          (app: DriverApplication) => ({
+            id: app.id.toString(),
+            first_name: app.first_name,
+            last_name: app.last_name,
+            email: app.email,
+            phone: app.phone,
+            company_id: app.company_id?.toString(),
+            status: app.status || "pending",
+            submitted_at: app.submitted_at,
+            company: "", // This might need to be fetched separately
+            dob: app.dob,
+            position_applied_for: app.position_applied_for,
+            background_check_status: app.background_check_status,
+            current_address: app.current_address,
+            current_city: app.current_city,
+            current_state: app.current_state,
+            current_zip: app.current_zip,
+            current_address_from_month: app.current_address_from_month,
+            current_address_from_year: app.current_address_from_year,
+            license_number: app.license_number,
+            license_state: app.license_state,
+            license_expiration_date: app.license_expiration_date,
+            medical_card_expiration_date: app.medical_card_expiration_date,
+            addresses: app.addresses,
+            jobs: app.jobs,
+            social_security_number: app.social_security_number,
+            consent_to_background_check: app.consent_to_background_check,
+            background_check_results: app.background_check_results,
+            background_check_completed_at: app.background_check_completed_at,
+            // Consent fields
+            fair_credit_reporting_act_consent:
+              app.fair_credit_reporting_act_consent,
+            fmcsa_clearinghouse_consent: app.fmcsa_clearinghouse_consent,
+            motor_vehicle_record_consent: app.motor_vehicle_record_consent,
+            drug_test_consent: app.drug_test_consent,
+            drug_test_question: app.drug_test_question,
+            general_consent: app.general_consent,
+            // Signature fields
+            fair_credit_reporting_act_consent_signature:
+              app.fair_credit_reporting_act_consent_signature,
+            fmcsa_clearinghouse_consent_signature:
+              app.fmcsa_clearinghouse_consent_signature,
+            motor_vehicle_record_consent_signature:
+              app.motor_vehicle_record_consent_signature,
+            drug_test_consent_signature: app.drug_test_consent_signature,
+            general_consent_signature: app.general_consent_signature,
+            // Document photo fields
+            license_photo: app.license_photo,
+            medical_card_photo: app.medical_card_photo,
+            // Device and IP information
+            device_info: app.device_info,
+            ip_address: app.ip_address,
+          })
+        );
 
         setApplications(transformedApplications);
       } else {
@@ -90,7 +111,7 @@ export const useDriverApplication = (id: string) => {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const fetchApplication = async () => {
     if (!id) {
       setApplication(null);
@@ -137,15 +158,35 @@ export const useDriverApplication = (id: string) => {
           addresses: app.addresses,
           jobs: app.jobs,
           social_security_number: app.social_security_number,
-          background_check_consent_signature: app.background_check_consent_signature,
-          employment_consent_signature: app.employment_consent_signature,
+          consent_to_background_check: app.consent_to_background_check,
+          background_check_results: app.background_check_results,
+          background_check_completed_at: app.background_check_completed_at,
+          // Consent fields
+          fair_credit_reporting_act_consent:
+            app.fair_credit_reporting_act_consent,
+          fmcsa_clearinghouse_consent: app.fmcsa_clearinghouse_consent,
+          motor_vehicle_record_consent: app.motor_vehicle_record_consent,
+          drug_test_consent: app.drug_test_consent,
+          drug_test_question: app.drug_test_question,
+          general_consent: app.general_consent,
+          // Signature fields
+          fair_credit_reporting_act_consent_signature:
+            app.fair_credit_reporting_act_consent_signature,
+          fmcsa_clearinghouse_consent_signature:
+            app.fmcsa_clearinghouse_consent_signature,
+          motor_vehicle_record_consent_signature:
+            app.motor_vehicle_record_consent_signature,
           drug_test_consent_signature: app.drug_test_consent_signature,
-          motor_vehicle_record_consent_signature: app.motor_vehicle_record_consent_signature,
           general_consent_signature: app.general_consent_signature,
-          deviceInfo: app.deviceInfo,
-          ipAddress: app.ipAddress,
+          // Document photo fields
+          license_photo: app.license_photo,
+          medical_card_photo: app.medical_card_photo,
+          // Device and IP information
+          device_info: app.device_info,
+          ip_address: app.ip_address,
+          logs: app.logs,
         };
-
+        console.log(transformedApplication);
         setApplication(transformedApplication);
       } else {
         setError(result.message || "Failed to fetch application");
@@ -161,8 +202,8 @@ export const useDriverApplication = (id: string) => {
   useEffect(() => {
     fetchApplication();
   }, [id]);
-  
-   return {
+
+  return {
     application,
     loading,
     error,

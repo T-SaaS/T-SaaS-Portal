@@ -1,12 +1,133 @@
+import cors from "cors";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { log, serveStatic, setupVite } from "./vite";
 
 const app = express();
 
-// Enable trust proxy for proper IP address detection behind proxies
-app.set("trust proxy", true);
+// Configure trust proxy for proper IP address detection behind proxies
+// Only trust the first proxy (load balancer) in production
+// In development, we can trust localhost proxies
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1); // Trust only the first proxy
+} else {
+  app.set("trust proxy", "loopback"); // Trust only loopback addresses in development
+}
+
+// CORS configuration
+const corsOptions = {
+  origin: function (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      "http://localhost:3000", // Vite dev server
+      "http://localhost:5173", // Vite default port
+      "http://localhost:4173", // Vite preview port
+      "http://localhost:5000", // Backend server
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:4173",
+      "http://127.0.0.1:5000",
+      // Add your production domain here when deployed
+      // "https://yourdomain.com",
+    ];
+
+    // Log CORS requests in development
+    if (process.env.NODE_ENV === "development") {
+      log(`CORS request from origin: ${origin}`);
+    }
+
+    // Check if the origin is allowed
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      process.env.NODE_ENV === "development"
+    ) {
+      callback(null, true);
+    } else {
+      log(`CORS blocked request from origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // Allow cookies and authorization headers
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Cache-Control",
+  ],
+  exposedHeaders: ["Content-Length", "X-Requested-With"],
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
+
+// Rate limiting configuration
+const createRateLimiter = (windowMs: number, max: number, message?: string) => {
+  return rateLimit({
+    windowMs,
+    max, // Limit each IP to max requests per windowMs
+    message: {
+      error: "Too many requests",
+      message:
+        message || `Too many requests from this IP, please try again later.`,
+      retryAfter: Math.ceil(windowMs / 1000),
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    skipSuccessfulRequests: false, // Count all requests, including successful ones
+    skipFailedRequests: false, // Count all requests, including failed ones
+    keyGenerator: (req) => {
+      // Use a combination of IP and user agent for better rate limiting
+      const ip = req.ip || req.connection.remoteAddress || "unknown";
+      const userAgent = req.get("User-Agent") || "unknown";
+      return `${ip}-${userAgent}`;
+    },
+    handler: (req, res) => {
+      log(`Rate limit exceeded for IP: ${req.ip} - ${req.method} ${req.path}`);
+      res.status(429).json({
+        error: "Too many requests",
+        message:
+          message || `Too many requests from this IP, please try again later.`,
+        retryAfter: Math.ceil(windowMs / 1000),
+      });
+    },
+  });
+};
+
+// General rate limiter for all routes
+const generalLimiter = createRateLimiter(
+  5 * 60 * 1000, // 5 minutes
+  100, // limit each IP to 100 requests per 15 minutes
+  "Too many requests from this IP, please try again in 15 minutes."
+);
+
+// Stricter rate limiter for authentication routes
+const authLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  5, // limit each IP to 5 requests per 15 minutes
+  "Too many authentication attempts, please try again in 15 minutes."
+);
+
+// API rate limiter for sensitive operations
+const apiLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  50, // limit each IP to 50 requests per 15 minutes
+  "Too many API requests, please try again in 15 minutes."
+);
+
+// Apply rate limiting
+app.use(generalLimiter); // Apply to all routes
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

@@ -11,6 +11,15 @@ import {
 import { MoreHorizontal, Eye, Pencil, Download } from "lucide-react";
 import { DriverApplication, Company } from "@/types";
 
+// Closed statuses that prevent editing
+const CLOSED_STATUSES: DriverApplication["status"][] = [
+  "Not Hired",
+  "Disqualified",
+  "Rejected",
+  "Expired",
+  "Approved",
+];
+
 export interface ApplicationRowProps {
   application: DriverApplication;
   companies?: Company[] | null;
@@ -66,6 +75,14 @@ export function ApplicationRow({
                 View Details
               </Link>
             </DropdownMenuItem>
+            {!CLOSED_STATUSES.includes(application.status) && (
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link to={`/applications/${application.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => onExport?.(application.id)}
               className="cursor-pointer"

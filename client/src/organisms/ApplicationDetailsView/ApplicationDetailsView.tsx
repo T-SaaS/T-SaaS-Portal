@@ -1,7 +1,17 @@
 import { PageHeader } from "@/atoms/PageHeader";
 import { ActionButton } from "@/atoms/ActionButton";
 import { InfoCard } from "@/molecules/InfoCard";
+import { StatusManagement } from "@/molecules/StatusManagement";
 import { Company, DriverApplication, Address, Job } from "@/types";
+
+// Closed statuses that prevent editing
+const CLOSED_STATUSES: DriverApplication["status"][] = [
+  "Not Hired",
+  "Disqualified",
+  "Rejected",
+  "Expired",
+  "Approved",
+];
 import {
   Download,
   CheckCircle,
@@ -20,6 +30,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export interface ApplicationDetailsViewProps {
   application: DriverApplication;
@@ -32,6 +43,7 @@ export interface ApplicationDetailsViewProps {
   onEdit?: () => void;
   onSave?: () => void;
   onCancel?: () => void;
+  onStatusChange?: () => void;
 }
 
 export function ApplicationDetailsView({
@@ -45,6 +57,7 @@ export function ApplicationDetailsView({
   onEdit,
   onSave,
   onCancel,
+  onStatusChange,
 }: ApplicationDetailsViewProps) {
   const formatDateRange = (
     fromMonth: number,
@@ -64,16 +77,162 @@ export function ApplicationDetailsView({
   };
 
   const getBackgroundCheckStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
       case "failed":
         return "bg-red-100 text-red-800";
-      case "in_progress":
-        return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  // Utility function to format log changes in a human-readable way
+  const formatLogChanges = (changes: Record<string, any>): string => {
+    if (!changes || Object.keys(changes).length === 0) return "";
+
+    const formattedChanges: string[] = [];
+
+    // Helper function to format field names
+    const formatFieldName = (field: string): string => {
+      const fieldMap: Record<string, string> = {
+        first_name: "First Name",
+        last_name: "Last Name",
+        email: "Email",
+        phone: "Phone",
+        status: "Status",
+        company_id: "Company",
+        address: "Address",
+        city: "City",
+        state: "State",
+        zip_code: "Zip Code",
+        license_number: "License Number",
+        license_state: "License State",
+        license_expiry: "License Expiry",
+        medical_card_number: "Medical Card Number",
+        medical_card_expiry: "Medical Card Expiry",
+        license_photo: "License Photo",
+        medical_card_photo: "Medical Card Photo",
+        fair_credit_reporting_act_consent_signature: "Credit Report Consent",
+        fmcsa_clearinghouse_consent_signature: "FMCSA Consent",
+        drug_test_consent_signature: "Drug Test Consent",
+        motor_vehicle_record_consent_signature: "MVR Consent",
+        general_consent_signature: "General Consent",
+        jobs: "Employment History",
+        addresses: "Address History",
+      };
+      return (
+        fieldMap[field] ||
+        field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      );
+    };
+
+    // Helper function to format complex values
+    const formatComplexValue = (value: any): string => {
+      if (value === null || value === undefined) return "None";
+      if (typeof value === "boolean") return value ? "Yes" : "No";
+      if (typeof value === "string") return value;
+      if (typeof value === "number") return String(value);
+
+      // Handle arrays
+      if (Array.isArray(value)) {
+        if (value.length === 0) return "None";
+        if (value.length === 1) return "1 item";
+        return `${value.length} items`;
+      }
+
+      // Handle objects
+      if (typeof value === "object") {
+        // Check if it's a signature object
+        if (value.uploaded !== undefined) {
+          return value.uploaded ? "Signed" : "Not signed";
+        }
+
+        // Check if it's a photo object
+        if (value.url !== undefined) {
+          return value.url ? "Uploaded" : "Not uploaded";
+        }
+
+        // For other objects, try to get a meaningful description
+        const keys = Object.keys(value);
+        if (keys.length === 0) return "Empty object";
+        if (keys.length <= 3) {
+          return keys
+            .map((key) => `${key}: ${formatComplexValue(value[key])}`)
+            .join(", ");
+        }
+        return `${keys.length} properties`;
+      }
+
+      return String(value);
+    };
+
+    Object.entries(changes).forEach(([field, change]) => {
+      if (
+        change &&
+        typeof change === "object" &&
+        "from" in change &&
+        "to" in change
+      ) {
+        // Handle from/to format
+        const fromValue = formatComplexValue(change.from);
+        const toValue = formatComplexValue(change.to);
+
+        formattedChanges.push(
+          `${formatFieldName(field)}: ${fromValue} → ${toValue}`
+        );
+      } else if (
+        change &&
+        typeof change === "object" &&
+        "old_status" in change &&
+        "new_status" in change
+      ) {
+        // Handle status changes
+        formattedChanges.push(
+          `Status: ${change.old_status} → ${change.new_status}`
+        );
+      } else {
+        // Handle simple value changes
+        const value = formatComplexValue(change);
+        formattedChanges.push(`${formatFieldName(field)}: ${value}`);
+      }
+    });
+
+    return formattedChanges.join(", ");
+  };
+
+  // Utility function to format log metadata in a human-readable way
+  const formatLogMetadata = (metadata: Record<string, any>): string => {
+    if (!metadata || Object.keys(metadata).length === 0) return "";
+
+    const formattedMetadata: string[] = [];
+
+    // Handle other relevant fields (excluding reason since it's displayed separately)
+    const relevantFields = ["ip_address", "user_agent", "device_info"];
+    relevantFields.forEach((field) => {
+      if (metadata[field]) {
+        if (field === "device_info" && typeof metadata[field] === "object") {
+          const device = metadata[field];
+          if (device.deviceType) {
+            formattedMetadata.push(`via ${device.deviceType}`);
+          }
+        } else if (field === "ip_address") {
+          formattedMetadata.push(`IP: ${metadata[field]}`);
+        } else if (field === "user_agent") {
+          // Extract browser info from user agent
+          const ua = metadata[field];
+          if (ua.includes("Chrome")) formattedMetadata.push("Chrome");
+          else if (ua.includes("Firefox")) formattedMetadata.push("Firefox");
+          else if (ua.includes("Safari")) formattedMetadata.push("Safari");
+          else if (ua.includes("Edge")) formattedMetadata.push("Edge");
+          else formattedMetadata.push("unknown browser");
+        }
+      }
+    });
+
+    return formattedMetadata.join(", ");
   };
 
   const personalInfoFields = [
@@ -145,29 +304,16 @@ export function ApplicationDetailsView({
             <ActionButton icon={Download} variant="outline" onClick={onExport}>
               Export
             </ActionButton>
-            {application.status === "pending" && (
-              <>
-                <ActionButton
-                  icon={XCircle}
-                  variant="outline"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={onReject}
-                >
-                  Reject
-                </ActionButton>
-                <ActionButton icon={CheckCircle} onClick={onApprove}>
-                  Approve
-                </ActionButton>
-              </>
+            {!CLOSED_STATUSES.includes(application.status) && (
+              <ActionButton icon={Pencil} onClick={onEdit}>
+                Edit
+              </ActionButton>
             )}
-            <ActionButton icon={Pencil} onClick={onEdit}>
-              Edit
-            </ActionButton>
           </>
         )}
       </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <InfoCard
           title="Personal Information"
           icon={User}
@@ -178,12 +324,13 @@ export function ApplicationDetailsView({
           icon={Phone}
           fields={contactInfoFields}
         />
-        <InfoCard
-          title="Application Status"
-          icon={FileText}
-          fields={statusInfoFields}
-        />
       </div>
+
+      {/* Status Management */}
+      <StatusManagement
+        application={application}
+        onStatusChange={onStatusChange || (() => {})}
+      />
 
       {/* Current Address */}
       <Card>
@@ -274,6 +421,84 @@ export function ApplicationDetailsView({
           </div>
         </CardContent>
       </Card>
+
+      {/* Document Photos */}
+      {(application.license_photo || application.medical_card_photo) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Document Photos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {application.license_photo && application.license_photo.url && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">
+                    Driver's License Photo
+                  </label>
+                  <div className="relative">
+                    <img
+                      src={application.license_photo.url}
+                      alt="Driver's License"
+                      className="w-full h-48 object-contain rounded-md border"
+                    />
+                    <div className="absolute top-2 right-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = application.license_photo!.url!;
+                          link.download = `license-photo-${application.id}.png`;
+                          link.click();
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {application.medical_card_photo &&
+                application.medical_card_photo.url && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">
+                      Medical Card Photo
+                    </label>
+                    <div className="relative">
+                      <img
+                        src={application.medical_card_photo.url}
+                        alt="Medical Card"
+                        className="w-full h-48 object-contain rounded-md border"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = application.medical_card_photo!.url!;
+                            link.download = `medical-card-photo-${application.id}.png`;
+                            link.click();
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Address History */}
       {application.addresses && application.addresses.length > 0 && (
@@ -539,7 +764,6 @@ export function ApplicationDetailsView({
               ].map((item, index) => {
                 const hasConsent = item.consent === true;
                 const hasSignature = item.signature && item.signature.uploaded;
-
                 return (
                   <div key={index} className="flex items-center gap-3">
                     {hasConsent && hasSignature ? (
@@ -615,6 +839,64 @@ export function ApplicationDetailsView({
           )}
         </CardContent>
       </Card>
+
+      {/* Application Logs */}
+      {application.logs && application.logs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm text-slate-600">
+              <FileText className="h-4 w-4" />
+              Application Logs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {application.logs
+                .slice()
+                .reverse()
+                .map((log, index) => (
+                  <div key={index} className="text-xs text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <span className="uppercase tracking-wide font-medium">
+                        {formatDate(log.created_at)}
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="capitalize">{log.action}</span>
+                      {log.user_email && (
+                        <>
+                          <span className="text-slate-400">•</span>
+                          <span className="font-medium text-slate-600">
+                            by {log.user_email}
+                          </span>
+                        </>
+                      )}
+                      {!log.user_email && (
+                        <span className="text-slate-400 text-xs">
+                          (unknown user)
+                        </span>
+                      )}
+                    </div>
+                    {log.changes && Object.keys(log.changes).length > 0 && (
+                      <div className="mt-1 ml-4 text-slate-400">
+                        {formatLogChanges(log.changes)}
+                      </div>
+                    )}
+                    {log.metadata && log.metadata.reason && (
+                      <div className="mt-1 ml-4 text-slate-600 text-xs font-medium">
+                        Notes: "{log.metadata.reason}"
+                      </div>
+                    )}
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <div className="mt-1 ml-4 text-slate-400 text-xs">
+                        {formatLogMetadata(log.metadata)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
