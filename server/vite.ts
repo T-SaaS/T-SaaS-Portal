@@ -77,36 +77,42 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // 1) Locate your built public folder
-  const publicPath = (() => {
-    const candidates = [
-      path.resolve(process.cwd(), "dist", "public"),
-      path.resolve(import.meta.dirname, "..", "dist", "public"),
-    ];
-    return candidates.find((p) => fs.existsSync(p))!;
-  })();
+  // Paths optimized for Render.com deployment
+  const possiblePaths = [
+    path.resolve(process.cwd(), "public"), // Render.com production (running from dist/)
+    path.resolve(process.cwd(), "dist", "public"), // Alternative (running from root)
+    path.resolve(import.meta.dirname, "..", "dist", "public"), // Alternative path
+    path.resolve(process.cwd(), "public"), // Fallback
+  ];
 
-  console.log(`Serving static files from: ${publicPath}`);
+  let distPath = null;
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      distPath = testPath;
+      break;
+    }
+  }
 
-  // 2) **Explicitly** mount /assets → dist/public/assets
-  app.use(
-    "/assets",
-    express.static(path.join(publicPath, "assets"), {
-      maxAge: "1y",      // long cache, files are content-hashed
-      immutable: true,
-    })
-  );
+  if (!distPath) {
+    console.warn(
+      `Could not find the build directory, tried: ${possiblePaths.join(
+        ", "
+      )}, serving API only`
+    );
+    // Don't throw error, just serve API routes
+    app.use("*", (_req, res) => {
+      res.status(404).json({ message: "Not found" });
+    });
+    return;
+  }
 
-  // 3) Mount everything else (HTML, images, CSS, fonts)  
-  app.use(
-    express.static(publicPath, {
-      maxAge: "1h",
-    })
-  );
+  console.log(`Serving static files from: ${distPath}`);
+  app.use(express.static(distPath));
 
-  // 4) SPA fallback: serve index.html for client-side routes
-  app.get("/*", (_req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"), (err) => {
+  // fall through to index.html if the file doesn't exist
+  app.use("*", (req, res) => {
+    console.log(`Serving index.html for route: ${req.originalUrl}`);
+    res.sendFile(path.resolve(distPath, "index.html"), (err) => {
       if (err) {
         console.error(`Error serving index.html: ${err.message}`);
         res.status(500).json({ error: "Failed to serve static files" });

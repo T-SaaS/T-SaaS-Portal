@@ -23,7 +23,6 @@ services:
         - package.json
         - tsconfig.server.json
         - vite.config.ts
-        - scripts/**
     envVars:
       - key: NODE_ENV
         value: production

@@ -41,4 +41,7 @@ export default defineConfig({
       },
     },
   },
+  // Ensure assets are built with proper paths
+  base: "/",
+  publicDir: path.resolve(import.meta.dirname, "client", "public"),
 });
