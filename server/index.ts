@@ -1,7 +1,7 @@
 import cors from "cors";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { log, serveStatic, setupVite } from "./vite";
 
@@ -89,7 +89,10 @@ const createRateLimiter = (windowMs: number, max: number, message?: string) => {
     skipFailedRequests: false, // Count all requests, including failed ones
     keyGenerator: (req) => {
       // Use a combination of IP and user agent for better rate limiting
-      const ip = req.ip || req.connection.remoteAddress || "unknown";
+      // Use the ipKeyGenerator helper for proper IPv6 handling
+      const ip = ipKeyGenerator(
+        req.ip || req.connection.remoteAddress || "unknown"
+      );
       const userAgent = req.get("User-Agent") || "unknown";
       return `${ip}-${userAgent}`;
     },
