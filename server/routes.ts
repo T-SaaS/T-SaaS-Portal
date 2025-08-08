@@ -15,6 +15,8 @@ import { ApplicationStatusService } from "./services/applicationStatusService";
 import { emailService, EmailTemplateType } from "./services/emailService";
 import { LoggingService } from "./services/loggingService";
 import { getSignaturesForEditing } from "./utils/signatureUtils";
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Rate limiting configuration
 const createRateLimiter = (windowMs: number, max: number, message?: string) => {

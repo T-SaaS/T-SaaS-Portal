@@ -1,10 +1,11 @@
 import cors from "cors";
-import "dotenv/config";
+import dotenv from "dotenv";
 import express, { NextFunction, type Request, Response } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { log, serveStatic, setupVite } from "./vite";
 
+dotenv.config();
 const app = express();
 
 // Configure trust proxy for proper IP address detection behind proxies
