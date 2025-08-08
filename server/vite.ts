@@ -72,7 +72,9 @@ export function serveStatic(app: Express) {
   const possiblePaths = [
     path.resolve(import.meta.dirname, "public"), // For local development
     path.resolve(import.meta.dirname, "..", "public"), // For Vercel deployment
+    path.resolve(import.meta.dirname, "..", "dist", "public"), // For Render.com deployment
     path.resolve(process.cwd(), "public"), // Fallback
+    path.resolve(process.cwd(), "dist", "public"), // Fallback for Render.com
   ];
 
   let distPath = null;
@@ -85,7 +87,9 @@ export function serveStatic(app: Express) {
 
   if (!distPath) {
     console.warn(
-      `Could not find the build directory, tried: ${possiblePaths.join(", ")}, serving API only`
+      `Could not find the build directory, tried: ${possiblePaths.join(
+        ", "
+      )}, serving API only`
     );
     // Don't throw error, just serve API routes
     app.use("*", (_req, res) => {
