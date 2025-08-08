@@ -1,16 +1,20 @@
+previews:
+  generation: automatic
+
 services:
   - type: web
-    name: driver-qualification-tool
-    env: node
+    runtime: node
+    name: DriverQualificationTool
+    repo: https://github.com/T-SaaS/DriverQualificationTool
+    numInstances: 1
+    region: Oregon (US West)
+    plan: hobby
+    branch: main
     buildCommand: npm run build:prod
     startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-    healthCheckPath: /api/health
     autoDeploy: true
+    maxShutdownDelaySeconds: 120
+    healthCheckPath: /api/health
     buildFilter:
       paths:
         - server/**
@@ -19,3 +23,47 @@ services:
         - package.json
         - tsconfig.server.json
         - vite.config.ts
+        - scripts/**
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: ZEPTOMAIL_API_TOKEN
+        sync: false
+      - key: ZEPTOMAIL_API_URL
+        value: api.zeptomail.com/
+      - key: COMPANY_NAME
+        value: TruckingMBA
+      - key: ALLOWED_ORIGINS
+        value: https://driver-qualification-tool.onrender.com
+      - fromGroup: supabase-config
+      - fromGroup: email-config
+
+envVarGroups:
+  - name: supabase-config
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+  - name: email-config
+    envVars:
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: ZEPTOMAIL_API_TOKEN
+        sync: false
+      - key: ZEPTOMAIL_API_URL
+        value: api.zeptomail.com/
+      - key: COMPANY_NAME
+        value: TruckingMBA
