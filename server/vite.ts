@@ -43,7 +43,12 @@ export async function setupVite(app: Express, server: Server) {
 
     try {
       // In development, always use the client/index.html template
-      const clientTemplate = path.resolve(import.meta.dirname, "..", "client", "index.html");
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "..",
+        "client",
+        "index.html"
+      );
 
       if (!fs.existsSync(clientTemplate)) {
         throw new Error("Could not find index.html template");
