@@ -579,12 +579,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
         console.log(
           "Available buckets:",
-          buckets?.map((b) => b.name)
+          buckets?.map((b: any) => b.name)
         );
 
         // Check if application-signatures bucket exists
         const signaturesBucket = buckets?.find(
-          (b) => b.name === "application-signatures"
+          (b: any) => b.name === "application-signatures"
         );
         if (!signaturesBucket) {
           console.error("application-signatures bucket not found");
@@ -727,12 +727,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
         console.log(
           "Available buckets:",
-          buckets?.map((b) => b.name)
+          buckets?.map((b: any) => b.name)
         );
 
         // Check if driver-file-documents bucket exists, create if not
         const documentsBucket = buckets?.find(
-          (b) => b.name === "driver-file-documents"
+          (b: any) => b.name === "driver-file-documents"
         );
         if (!documentsBucket) {
           console.log("driver-file-documents bucket not found, creating...");
