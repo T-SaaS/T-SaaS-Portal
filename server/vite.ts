@@ -82,7 +82,8 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   // Paths optimized for Render.com deployment
   const possiblePaths = [
-    path.resolve(process.cwd(), "dist", "public"), // Render.com production
+    path.resolve(process.cwd(), "public"), // Render.com production (running from dist/)
+    path.resolve(process.cwd(), "dist", "public"), // Alternative (running from root)
     path.resolve(import.meta.dirname, "..", "dist", "public"), // Alternative path
     path.resolve(process.cwd(), "public"), // Fallback
   ];
