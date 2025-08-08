@@ -1,6 +1,9 @@
 import type {
+  CreateDriver,
   DriverApplication,
   InsertDriverApplication,
+  LogEntry,
+  UpdateDriver,
 } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 
@@ -133,5 +136,179 @@ export const db = {
 
     if (error) throw error;
     return companies;
+  },
+
+  // Driver operations
+  async createDriver(data: CreateDriver) {
+    const { data: driver, error } = await supabase
+      .from("drivers")
+      .insert({
+        ...data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error creating driver:", error);
+      throw error;
+    }
+    return driver;
+  },
+
+  async getAllDrivers(page: number = 1, limit: number = 10) {
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const { count, error: countError } = await supabase
+      .from("drivers")
+      .select("*", { count: "exact", head: true });
+
+    if (countError) throw countError;
+
+    // Get paginated data
+    const { data: drivers, error } = await supabase
+      .from("drivers")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    return {
+      data: drivers,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+        hasNext: page * limit < (count || 0),
+        hasPrev: page > 1,
+      },
+    };
+  },
+
+  async getDriver(id: string) {
+    const { data: driver, error } = await supabase
+      .from("drivers")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    return driver;
+  },
+
+  async updateDriver(id: string, updates: UpdateDriver) {
+    const { data: driver, error } = await supabase
+      .from("drivers")
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return driver;
+  },
+
+  async deleteDriver(id: string) {
+    const { error } = await supabase.from("drivers").delete().eq("id", id);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
+  async getDriversByCompany(
+    companyId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const { count, error: countError } = await supabase
+      .from("drivers")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", companyId);
+
+    if (countError) throw countError;
+
+    // Get paginated data
+    const { data: drivers, error } = await supabase
+      .from("drivers")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    return {
+      data: drivers,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+        hasNext: page * limit < (count || 0),
+        hasPrev: page > 1,
+      },
+    };
+  },
+
+  // Helper function to append a log entry to an entity's logs array
+  async appendLogToEntity(
+    tableName: "companies" | "driver_applications" | "drivers",
+    entityId: string,
+    logEntry: Omit<LogEntry, "id" | "created_at">
+  ) {
+    const newLogEntry: LogEntry = {
+      ...logEntry,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    };
+
+    // Get current logs array
+    const { data: currentEntity, error: fetchError } = await supabase
+      .from(tableName)
+      .select("logs")
+      .eq("id", entityId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Append new log entry to existing logs
+    const currentLogs = (currentEntity?.logs as LogEntry[]) || [];
+    const updatedLogs = [...currentLogs, newLogEntry];
+
+    // Update the entity with new logs array
+    const { error: updateError } = await supabase
+      .from(tableName)
+      .update({ logs: updatedLogs })
+      .eq("id", entityId);
+
+    if (updateError) throw updateError;
+
+    return newLogEntry;
+  },
+
+  // Helper function to get logs from an entity
+  async getEntityLogs(
+    tableName: "companies" | "driver_applications" | "drivers",
+    entityId: string
+  ) {
+    const { data: entity, error } = await supabase
+      .from(tableName)
+      .select("logs")
+      .eq("id", entityId)
+      .single();
+
+    if (error) throw error;
+
+    return (entity?.logs as LogEntry[]) || [];
   },
 };

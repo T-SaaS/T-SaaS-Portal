@@ -10,8 +10,16 @@ import { useDriverApplications } from "@/hooks/useDriverApplications";
 import { formatDate } from "@/utils/dateUtils";
 import { useCompanies } from "@/hooks/useCompany";
 
+// Closed statuses that should be filtered out from the applications list
+const CLOSED_STATUSES: DriverApplication["status"][] = [
+  "Not Hired",
+  "Disqualified",
+  "Rejected",
+  "Expired",
+  "Approved",
+];
+
 export function ApplicationsPage() {
-  
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch applications using REST API
@@ -55,6 +63,28 @@ export function ApplicationsPage() {
     consent_to_background_check: app.consent_to_background_check,
     background_check_results: app.background_check_results,
     background_check_completed_at: app.background_check_completed_at,
+    // Consent fields
+    fair_credit_reporting_act_consent: app.fair_credit_reporting_act_consent,
+    fmcsa_clearinghouse_consent: app.fmcsa_clearinghouse_consent,
+    motor_vehicle_record_consent: app.motor_vehicle_record_consent,
+    drug_test_consent: app.drug_test_consent,
+    drug_test_question: app.drug_test_question,
+    general_consent: app.general_consent,
+    // Signature fields
+    fair_credit_reporting_act_consent_signature:
+      app.fair_credit_reporting_act_consent_signature,
+    fmcsa_clearinghouse_consent_signature:
+      app.fmcsa_clearinghouse_consent_signature,
+    motor_vehicle_record_consent_signature:
+      app.motor_vehicle_record_consent_signature,
+    drug_test_consent_signature: app.drug_test_consent_signature,
+    general_consent_signature: app.general_consent_signature,
+    // Document photo fields
+    license_photo: app.license_photo,
+    medical_card_photo: app.medical_card_photo,
+    // Device and IP information
+    device_info: app.device_info,
+    ip_address: app.ip_address,
   });
 
   const applications: DriverApplication[] =
@@ -62,11 +92,13 @@ export function ApplicationsPage() {
 
   const filteredApplications = applications.filter(
     (app) =>
-      `${app.first_name} ${app.last_name}`
+      // Filter out applications with closed statuses
+      !CLOSED_STATUSES.includes(app.status) &&
+      (`${app.first_name} ${app.last_name}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.company_id.toLowerCase().includes(searchTerm.toLowerCase())
+        app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.company_id.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleExport = (id: string) => {

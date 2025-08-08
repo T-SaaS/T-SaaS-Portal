@@ -38,6 +38,11 @@ export function ApplicationDetailsPage() {
     navigate(`/applications/${id}/edit`);
   };
 
+  const handleStatusChange = () => {
+    // Refresh the application data when status changes
+    window.location.reload();
+  };
+
   // Handle loading state
   if (applicationLoading) {
     return (
@@ -65,6 +70,7 @@ export function ApplicationDetailsPage() {
       onEdit={handleEdit}
       onSave={() => {}} // No save logic
       onCancel={() => {}} // No cancel logic
+      onStatusChange={handleStatusChange}
     />
   );
 }
