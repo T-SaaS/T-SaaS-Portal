@@ -13,10 +13,10 @@ export interface StatusTransitionContext {
 }
 
 export class ApplicationStatusService {
-  private loggingService: LoggingService;
+  private defaultContext: StatusTransitionContext;
 
   constructor(context: StatusTransitionContext = {}) {
-    this.loggingService = new LoggingService(context);
+    this.defaultContext = context;
   }
 
   /**
@@ -178,7 +178,8 @@ export class ApplicationStatusService {
         await db.updateDriverApplication(applicationId, { status: newStatus });
 
         // Log the status change
-        await this.loggingService.log(
+        const loggingService = new LoggingService(this.defaultContext);
+        await loggingService.log(
           "driver_applications",
           applicationId,
           "status_changed",
@@ -208,6 +209,13 @@ export class ApplicationStatusService {
     status: ApplicationStatus,
     context: StatusTransitionContext = {}
   ): Promise<{ success: boolean; message: string }> {
+    console.log("ApplicationStatusService.setStatus called with context:", {
+      user_id: context.user_id,
+      user_email: context.user_email,
+      notes: context.notes,
+      hasNotes: !!context.notes,
+      notesLength: context.notes?.length,
+    });
     try {
       const application = await db.getDriverApplication(applicationId);
       if (!application) {
@@ -225,7 +233,12 @@ export class ApplicationStatusService {
         "status_changed",
         {
           changes: { status: { from: oldStatus, to: status } },
-          metadata: { reason: context.notes || "Manual status change" },
+          metadata: {
+            reason:
+              context.notes && context.notes.trim()
+                ? context.notes.trim()
+                : "Manual status change",
+          },
         }
       );
 
@@ -249,6 +262,13 @@ export class ApplicationStatusService {
     applicationId: string,
     context: StatusTransitionContext = {}
   ): Promise<{ success: boolean; driverId?: string; message: string }> {
+    console.log("ApplicationStatusService.hireDriver called with context:", {
+      user_id: context.user_id,
+      user_email: context.user_email,
+      notes: context.notes,
+      hasNotes: !!context.notes,
+      notesLength: context.notes?.length,
+    });
     try {
       const application = await db.getDriverApplication(applicationId);
       if (!application) {
@@ -296,7 +316,10 @@ export class ApplicationStatusService {
         metadata: {
           driver_id: driver.id,
           company_id: application.company_id,
-          reason: context.notes || "Driver hired from application",
+          reason:
+            context.notes && context.notes.trim()
+              ? context.notes.trim()
+              : "Driver hired from application",
         },
       });
 

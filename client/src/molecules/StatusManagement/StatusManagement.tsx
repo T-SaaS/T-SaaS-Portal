@@ -92,36 +92,6 @@ export function StatusManagement({
     }
   };
 
-  const handleAutoTransition = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await apiRequest(
-        "POST",
-        `/api/v1/driver-applications/${application.id}/status/transition`,
-        {
-          notes: notes.trim() || undefined,
-        }
-      );
-      const result = await response.json();
-
-      if (result.success) {
-        setSuccess(result.message);
-        setNotes("");
-        onStatusChange();
-        fetchAvailableTransitions();
-      } else {
-        setError(result.message || "Failed to process transition");
-      }
-    } catch (err) {
-      setError("Failed to process transition");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleHireDriver = async () => {
     setLoading(true);
     setError(null);

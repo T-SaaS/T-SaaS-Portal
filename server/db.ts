@@ -23,10 +23,29 @@ if (!supabaseKey) {
   );
 }
 
-// Create Supabase client for server-side operations
+// Create Supabase client for server-side operations (with service role key)
 export const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   supabaseKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+// Create a separate Supabase client for authentication (with anon key)
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+if (!supabaseAnonKey) {
+  throw new Error(
+    "VITE_SUPABASE_ANON_KEY must be set for authentication operations"
+  );
+}
+
+export const supabaseAuth = createClient(
+  process.env.VITE_SUPABASE_URL,
+  supabaseAnonKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -272,6 +291,12 @@ export const db = {
       created_at: new Date().toISOString(),
     };
 
+    console.log(`Attempting to append log to ${tableName}:${entityId}:`, {
+      logEntry: newLogEntry,
+      user_id: logEntry.user_id,
+      user_email: logEntry.user_email,
+    });
+
     // Get current logs array
     const { data: currentEntity, error: fetchError } = await supabase
       .from(tableName)
@@ -279,11 +304,21 @@ export const db = {
       .eq("id", entityId)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error(
+        `Error fetching current logs from ${tableName}:`,
+        fetchError
+      );
+      throw fetchError;
+    }
 
     // Append new log entry to existing logs
     const currentLogs = (currentEntity?.logs as LogEntry[]) || [];
     const updatedLogs = [...currentLogs, newLogEntry];
+
+    console.log(
+      `Updating ${tableName}:${entityId} with ${updatedLogs.length} logs`
+    );
 
     // Update the entity with new logs array
     const { error: updateError } = await supabase
@@ -291,8 +326,12 @@ export const db = {
       .update({ logs: updatedLogs })
       .eq("id", entityId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error(`Error updating logs in ${tableName}:`, updateError);
+      throw updateError;
+    }
 
+    console.log(`Successfully appended log to ${tableName}:${entityId}`);
     return newLogEntry;
   },
 

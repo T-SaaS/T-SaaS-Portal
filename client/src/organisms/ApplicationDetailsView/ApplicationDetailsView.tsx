@@ -207,18 +207,19 @@ export function ApplicationDetailsView({
   const formatLogMetadata = (metadata: Record<string, any>): string => {
     if (!metadata || Object.keys(metadata).length === 0) return "";
 
-    const relevantFields = ["ip_address", "user_agent", "device_info"];
     const formattedMetadata: string[] = [];
 
+    // Handle other relevant fields (excluding reason since it's displayed separately)
+    const relevantFields = ["ip_address", "user_agent", "device_info"];
     relevantFields.forEach((field) => {
       if (metadata[field]) {
         if (field === "device_info" && typeof metadata[field] === "object") {
           const device = metadata[field];
           if (device.deviceType) {
-            formattedMetadata.push(`${device.deviceType}`);
+            formattedMetadata.push(`via ${device.deviceType}`);
           }
         } else if (field === "ip_address") {
-          formattedMetadata.push(`${metadata[field]}`);
+          formattedMetadata.push(`IP: ${metadata[field]}`);
         } else if (field === "user_agent") {
           // Extract browser info from user agent
           const ua = metadata[field];
@@ -231,9 +232,7 @@ export function ApplicationDetailsView({
       }
     });
 
-    return formattedMetadata.length > 0
-      ? `via ${formattedMetadata.join(", ")}`
-      : "";
+    return formattedMetadata.join(", ");
   };
 
   const personalInfoFields = [
@@ -880,6 +879,11 @@ export function ApplicationDetailsView({
                     {log.changes && Object.keys(log.changes).length > 0 && (
                       <div className="mt-1 ml-4 text-slate-400">
                         {formatLogChanges(log.changes)}
+                      </div>
+                    )}
+                    {log.metadata && log.metadata.reason && (
+                      <div className="mt-1 ml-4 text-slate-600 text-xs font-medium">
+                        Notes: "{log.metadata.reason}"
                       </div>
                     )}
                     {log.metadata && Object.keys(log.metadata).length > 0 && (

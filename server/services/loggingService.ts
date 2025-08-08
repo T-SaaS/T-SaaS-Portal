@@ -1,5 +1,5 @@
 import type { LogEntry } from "@shared/schema";
-import { db, supabase } from "../db";
+import { db, supabaseAuth } from "../db";
 
 export interface LoggingContext {
   user_id?: string;
@@ -34,13 +34,34 @@ export class LoggingService {
 
     // Try to get user info from Authorization header
     const authHeader = req.headers["authorization"];
+    console.log(
+      "Auth header found:",
+      !!authHeader,
+      "Starts with Bearer:",
+      authHeader?.startsWith("Bearer ")
+    );
+
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
+      console.log(
+        "Token length:",
+        token.length,
+        "Token starts with:",
+        token.substring(0, 20) + "..."
+      );
+
       try {
         const {
           data: { user },
           error,
-        } = await supabase.auth.getUser(token);
+        } = await supabaseAuth.auth.getUser(token);
+
+        console.log("Supabase auth response:", {
+          user: !!user,
+          error: !!error,
+          errorDetails: error,
+        });
+
         if (!error && user) {
           user_id = user.id || null;
           user_email = user.email || null;
@@ -94,6 +115,14 @@ export class LoggingService {
       success,
       error_message,
     };
+
+    console.log("LoggingService.log called with:", {
+      entityType,
+      entityId,
+      action,
+      context: this.context,
+      logEntry,
+    });
 
     return db.appendLogToEntity(entityType, entityId, logEntry);
   }

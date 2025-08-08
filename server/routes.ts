@@ -820,12 +820,17 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         });
       }
 
+      const context = await LoggingService.extractContextFromRequest(req);
+
       const statusService = new ApplicationStatusService({
-        ...(await LoggingService.extractContextFromRequest(req)),
+        ...context,
         notes,
       });
 
-      const result = await statusService.setStatus(id, status);
+      const result = await statusService.setStatus(id, status, {
+        ...context,
+        notes,
+      });
 
       if (result.success) {
         res.json({
@@ -888,12 +893,17 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const id = req.params.id;
       const { notes } = req.body;
 
+      const context = await LoggingService.extractContextFromRequest(req);
+
       const statusService = new ApplicationStatusService({
-        ...(await LoggingService.extractContextFromRequest(req)),
+        ...context,
         notes,
       });
 
-      const result = await statusService.hireDriver(id);
+      const result = await statusService.hireDriver(id, {
+        ...context,
+        notes,
+      });
 
       if (result.success) {
         res.json({
