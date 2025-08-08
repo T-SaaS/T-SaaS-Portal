@@ -11,3 +11,11 @@ services:
         value: 10000
     healthCheckPath: /api/health
     autoDeploy: true
+    buildFilter:
+      paths:
+        - server/**
+        - client/**
+        - shared/**
+        - package.json
+        - tsconfig.server.json
+        - vite.config.ts
