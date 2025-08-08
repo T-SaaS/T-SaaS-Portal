@@ -190,7 +190,6 @@ DriverQualificationTool/
 ### Build Scripts
 
 - `npm run build:server` - Build server TypeScript
-- `npm run vercel-build` - Build for Vercel deployment
 
 ## 🔐 Authentication
 
@@ -320,7 +319,6 @@ The application is fully responsive with:
 
 The client can be deployed to:
 
-- **Vercel** - Optimized for React applications
 - **Netlify** - Static site hosting
 - **AWS S3 + CloudFront** - Scalable static hosting
 - **Any static hosting service**

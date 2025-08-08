@@ -10,7 +10,6 @@
     "build": "node scripts/build-simple.js",
     "build:prod": "cross-env NODE_ENV=production node scripts/build-simple.js",
     "build:server": "tsc --project tsconfig.server.json && node -e \"import('fs').then(fs => fs.cpSync('shared', 'dist/shared', {recursive: true}))\"",
-    "vercel-build": "npm run build:prod && node -e \"import('fs').then(fs => fs.cpSync('dist/public', 'public', {recursive: true}))\" && node -e \"import('fs').then(fs => fs.cpSync('dist/shared', 'shared', {recursive: true}))\"",
     "preview": "vite preview",
     "start:server": "node dist/server/index.js",
     "start": "node dist/server/index.js",
@@ -96,8 +95,6 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@replit/vite-plugin-cartographer": "^0.2.7",
-    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
     "@types/connect-pg-simple": "^7.0.3",

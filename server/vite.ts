@@ -68,13 +68,11 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // Try multiple possible paths for static files
+  // Paths optimized for Render.com deployment
   const possiblePaths = [
-    path.resolve(import.meta.dirname, "public"), // For local development
-    path.resolve(import.meta.dirname, "..", "public"), // For Vercel deployment
-    path.resolve(import.meta.dirname, "..", "dist", "public"), // For Render.com deployment
+    path.resolve(process.cwd(), "dist", "public"), // Render.com production
+    path.resolve(import.meta.dirname, "..", "dist", "public"), // Alternative path
     path.resolve(process.cwd(), "public"), // Fallback
-    path.resolve(process.cwd(), "dist", "public"), // Fallback for Render.com
   ];
 
   let distPath = null;
