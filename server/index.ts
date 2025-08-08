@@ -178,6 +178,17 @@ process.on("unhandledRejection", (reason, promise) => {
   // Don't exit immediately, let the server try to continue
 });
 
+// Handle graceful shutdown
+process.on("SIGTERM", () => {
+  log("SIGTERM received, shutting down gracefully");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  log("SIGINT received, shutting down gracefully");
+  process.exit(0);
+});
+
 (async () => {
   try {
     const server = await registerRoutes(app);
@@ -214,6 +225,17 @@ process.on("unhandledRejection", (reason, promise) => {
 
     // Use environment PORT for Render.com deployment, fallback to 5000
     const port = process.env.PORT || 5000;
+
+    // Set timeout values for Render.com deployment
+    server.keepAliveTimeout = 120000; // 120 seconds
+    server.headersTimeout = 120000; // 120 seconds
+
+    log(`Starting server on port ${port} with host 0.0.0.0`);
+    log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    log(
+      `Environment variables: PORT=${process.env.PORT}, NODE_ENV=${process.env.NODE_ENV}`
+    );
+
     server.listen(
       {
         port,
@@ -221,7 +243,8 @@ process.on("unhandledRejection", (reason, promise) => {
         reusePort: true,
       },
       () => {
-        log(`serving on port ${port}`);
+        log(`✅ Server started successfully on port ${port}`);
+        log(`🌐 Server accessible at http://0.0.0.0:${port}`);
       }
     );
 
