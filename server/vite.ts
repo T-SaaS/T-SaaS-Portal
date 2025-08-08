@@ -4,8 +4,6 @@ import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 import { createLogger, createServer as createViteServer } from "vite";
-import viteConfig from "../vite.config";
-
 const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
@@ -27,7 +25,6 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
     configFile: false,
     customLogger: {
       ...viteLogger,
