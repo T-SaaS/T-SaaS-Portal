@@ -70,13 +70,15 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // Paths optimized for Render.com deployment
+  // Enhanced path detection for Render.com deployment
   const possiblePaths = [
-    path.resolve(process.cwd(), "public"), // Render.com production (running from dist/)
-    path.resolve(process.cwd(), "dist", "public"), // Alternative (running from root)
-    path.resolve(import.meta.dirname, "..", "public"), // Server running from dist/server/
-    path.resolve(import.meta.dirname, "..", "dist", "public"), // Alternative path
-    path.resolve(process.cwd(), "public"), // Fallback
+    // Render.com production paths (server runs from dist/server/)
+    path.resolve(import.meta.dirname, "..", "public"),
+    path.resolve(process.cwd(), "public"),
+    path.resolve(process.cwd(), "dist", "public"),
+    // Alternative paths
+    path.resolve(import.meta.dirname, "..", "dist", "public"),
+    path.resolve(process.cwd(), "public"),
   ];
 
   let distPath = null;
@@ -103,15 +105,50 @@ export function serveStatic(app: Express) {
   console.log(`Serving static files from: ${distPath}`);
   console.log(`Current working directory: ${process.cwd()}`);
   console.log(`Server file location: ${import.meta.dirname}`);
-  
-  // Serve static files with proper MIME types
-  app.use(express.static(distPath, {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
-      }
+
+  // List files in the dist directory for debugging
+  try {
+    const files = fs.readdirSync(distPath);
+    console.log(`Files in ${distPath}:`, files);
+
+    const assetsPath = path.join(distPath, "assets");
+    if (fs.existsSync(assetsPath)) {
+      const assetFiles = fs.readdirSync(assetsPath);
+      console.log(`Files in ${assetsPath}:`, assetFiles);
     }
-  }));
+  } catch (error) {
+    console.log(`Error reading directory: ${error}`);
+  }
+
+  // Serve static files with proper MIME types and caching
+  app.use(
+    express.static(distPath, {
+      maxAge: "1y", // Cache static assets for 1 year
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".css")) {
+          res.setHeader("Content-Type", "text/css");
+          res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
+        } else if (filePath.endsWith(".js")) {
+          res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
+        }
+      },
+    })
+  );
+
+  // Specific route for CSS files as fallback
+  app.get("/assets/*.css", (req, res) => {
+    const cssPath = path.join(distPath, req.path);
+    console.log(`Serving CSS file: ${cssPath}`);
+
+    if (fs.existsSync(cssPath)) {
+      res.setHeader("Content-Type", "text/css");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.sendFile(cssPath);
+    } else {
+      console.error(`CSS file not found: ${cssPath}`);
+      res.status(404).send("CSS file not found");
+    }
+  });
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (req, res) => {

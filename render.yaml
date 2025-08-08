@@ -23,6 +23,8 @@ services:
         - package.json
         - tsconfig.server.json
         - vite.config.ts
+        - tailwind.config.ts
+        - postcss.config.js
     envVars:
       - key: NODE_ENV
         value: production
