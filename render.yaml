@@ -43,7 +43,7 @@ services:
       - key: COMPANY_NAME
         value: TruckingMBA
       - key: ALLOWED_ORIGINS
-        value: https://driver-qualification-tool.onrender.com
+        value: https://driverqualificationtool.onrender.com
       - fromGroup: supabase-config
       - fromGroup: email-config
 

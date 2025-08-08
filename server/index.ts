@@ -37,16 +37,28 @@ const corsOptions = {
       "http://127.0.0.1:5000",
       // Add your production domain here when deployed
       "https://driverqualificationtool.onrender.com",
+      "https://driverqualificationtool.onrender.com/",
     ];
+
+    // Add origins from environment variable
+    const envOrigins =
+      process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()) || [];
+    allowedOrigins.push(...envOrigins);
 
     // Log CORS requests in development
     if (process.env.NODE_ENV === "development") {
       log(`CORS request from origin: ${origin}`);
     }
 
+    // Normalize origin by removing trailing slash for comparison
+    const normalizedOrigin = origin?.replace(/\/$/, "");
+    const normalizedAllowedOrigins = allowedOrigins.map((o) =>
+      o.replace(/\/$/, "")
+    );
+
     // Check if the origin is allowed
     if (
-      allowedOrigins.indexOf(origin) !== -1 ||
+      normalizedAllowedOrigins.includes(normalizedOrigin) ||
       process.env.NODE_ENV === "development"
     ) {
       callback(null, true);
