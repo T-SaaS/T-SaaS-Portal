@@ -45,12 +45,24 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html"
-      );
+      // Try to find the client template in production first, then development
+      const possibleTemplates = [
+        path.resolve(process.cwd(), "dist", "public", "index.html"), // Production
+        path.resolve(import.meta.dirname, "..", "dist", "public", "index.html"), // Alternative production
+        path.resolve(import.meta.dirname, "..", "client", "index.html"), // Development
+      ];
+
+      let clientTemplate = null;
+      for (const templatePath of possibleTemplates) {
+        if (fs.existsSync(templatePath)) {
+          clientTemplate = templatePath;
+          break;
+        }
+      }
+
+      if (!clientTemplate) {
+        throw new Error("Could not find index.html template");
+      }
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
