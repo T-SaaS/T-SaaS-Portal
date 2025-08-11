@@ -1,5 +1,7 @@
 export { AddressForm } from "./AddressForm";
 export { ApplicationRow } from "./ApplicationRow";
+export { CompanyRow } from "./CompanyRow";
+export { CompanySearchFilterBar } from "./CompanySearchFilterBar";
 export { ConsentCheckbox } from "./ConsentCheckbox";
 export { DateRangeInput } from "./DateRangeInput";
 export { FilterDateRange } from "./FilterDateRange";

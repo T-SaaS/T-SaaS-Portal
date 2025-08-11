@@ -10,14 +10,24 @@ import {
   ApplicationDetailsPage,
   ApplicationEditPage,
   NotFoundPage,
+  CompaniesPage,
+  CompanyDetailsPage,
+  CompanyEditPage,
 } from "@/pages";
 import { DriverFormPage } from "@/pages/DriverFormPage/DriverFormPage";
 import { ThankYouPage } from "@/pages/ThankYouPage/ThankYouPage";
 import { LoginPage } from "@/pages/LoginPage/LoginPage";
 import { DeviceInfoTest } from "@/utils/deviceInfoTest";
 
+// Route type definition
+export interface RouteConfig {
+  path: string;
+  element: React.ReactElement;
+  title: string;
+}
+
 // External routes - accessible without authentication
-const externalRoutes = [
+export const externalRoutes: RouteConfig[] = [
   {
     path: "/ex/:companySlug/apply",
     element: <DriverFormPage />,
@@ -36,7 +46,7 @@ const externalRoutes = [
 ];
 
 // Private routes - require authentication
-const privateRoutes = [
+export const privateRoutes: RouteConfig[] = [
   {
     path: "/",
     element: <DashboardPage />,
@@ -58,11 +68,61 @@ const privateRoutes = [
     title: "Edit Application",
   },
   {
+    path: "/companies",
+    element: <CompaniesPage />,
+    title: "Companies",
+  },
+  {
+    path: "/companies/:id",
+    element: <CompanyDetailsPage />,
+    title: "Company Details",
+  },
+  {
+    path: "/companies/:id/edit",
+    element: <CompanyEditPage />,
+    title: "Edit Company",
+  },
+  {
     path: "/devices",
     element: <DeviceInfoTest />,
     title: "Devices",
   },
 ];
+
+// Helper function to match route patterns
+function matchRoute(pathname: string, routePath: string): boolean {
+  const pathSegments = pathname.split("/").filter(Boolean);
+  const routeSegments = routePath.split("/").filter(Boolean);
+
+  if (pathSegments.length !== routeSegments.length) {
+    return false;
+  }
+
+  return routeSegments.every((segment, index) => {
+    return segment.startsWith(":") || segment === pathSegments[index];
+  });
+}
+
+// Hook to get route title by pathname
+export function useRouteTitle(pathname: string): string {
+  // Check private routes first
+  const privateRoute = privateRoutes.find((route) =>
+    matchRoute(pathname, route.path)
+  );
+  if (privateRoute) {
+    return privateRoute.title;
+  }
+
+  // Check external routes
+  const externalRoute = externalRoutes.find((route) =>
+    matchRoute(pathname, route.path)
+  );
+  if (externalRoute) {
+    return externalRoute.title;
+  }
+
+  return "";
+}
 
 export function AppRouter() {
   return (

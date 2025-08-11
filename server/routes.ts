@@ -5,6 +5,7 @@ import {
   insertDriverApplicationSchema,
   updateDriverSchema,
 } from "@shared/schema";
+import dotenv from "dotenv";
 import express, { json } from "express";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server } from "http";
@@ -15,7 +16,6 @@ import { ApplicationStatusService } from "./services/applicationStatusService";
 import { emailService, EmailTemplateType } from "./services/emailService";
 import { LoggingService } from "./services/loggingService";
 import { getSignaturesForEditing } from "./utils/signatureUtils";
-import dotenv from 'dotenv';
 dotenv.config();
 
 // Rate limiting configuration
@@ -32,6 +32,13 @@ const createRateLimiter = (windowMs: number, max: number, message?: string) => {
     standardHeaders: true,
     legacyHeaders: false,
   });
+};
+
+// Helper function to conditionally apply rate limiting
+const conditionalRateLimit = (limiter: any) => {
+  return process.env.NODE_ENV === "development"
+    ? (req: any, res: any, next: any) => next()
+    : limiter;
 };
 
 // Rate limiters for different route types
@@ -81,73 +88,55 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     });
   });
 
-  // Submit driver application (rate limited)
-  app.post("/api/v1/driver-applications", apiLimiter, async (req, res) => {
-    try {
-      // Capture IP address
-      const ipAddress =
-        req.ip ||
-        req.connection.remoteAddress ||
-        req.socket.remoteAddress ||
-        req.headers["x-forwarded-for"]?.toString().split(",")[0] ||
-        req.headers["x-real-ip"]?.toString() ||
-        "unknown";
-
-      // Extract device info from request body if provided
-      const { device_info, ...applicationData } = req.body;
-
-      console.log("Application submission request:", {
-        hasDeviceInfo: !!device_info,
-        ipAddress,
-        deviceInfo: device_info
-          ? {
-              deviceType: device_info.deviceType,
-              os: device_info.os,
-              browser: device_info.browser,
-              isMobile: device_info.isMobile,
-            }
-          : null,
-      });
-
-      // Add device info and IP address to the application data
-      const dataWithDeviceInfo = {
-        ...applicationData,
-        device_info,
-        ip_address: ipAddress,
-      };
-
-      const validatedData =
-        insertDriverApplicationSchema.parse(dataWithDeviceInfo);
-      const application = await db.createDriverApplication(validatedData);
-      console.log("Application created successfully:", {
-        id: application.id,
-        companyId: application.company_id,
-        ipAddress,
-        deviceType: device_info?.deviceType,
-      });
-
-      // Log the application creation
+  // Submit driver application (rate limited in production only)
+  app.post(
+    "/api/v1/driver-applications",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
       try {
-        const loggingService = new LoggingService(
-          await LoggingService.extractContextFromRequest(req)
-        );
-        await loggingService.log(
-          "driver_applications",
-          application.id,
-          "created",
-          { metadata: { company_id: application.company_id } }
-        );
-      } catch (logError) {
-        console.error("Failed to log application creation:", logError);
-        // Don't fail the request if logging fails
-      }
+        // Capture IP address
+        const ipAddress =
+          req.ip ||
+          req.connection.remoteAddress ||
+          req.socket.remoteAddress ||
+          req.headers["x-forwarded-for"]?.toString().split(",")[0] ||
+          req.headers["x-real-ip"]?.toString() ||
+          "unknown";
 
-      // Initiate background check process
-      if (application.consentToBackgroundCheck === 1) {
-        console.log("Background check consent given, initiating process...");
-        // backgroundCheckService.initiateBackgroundCheck(application.id);
+        // Extract device info from request body if provided
+        const { device_info, ...applicationData } = req.body;
 
-        // Log background check initiation
+        console.log("Application submission request:", {
+          hasDeviceInfo: !!device_info,
+          ipAddress,
+          deviceInfo: device_info
+            ? {
+                deviceType: device_info.deviceType,
+                os: device_info.os,
+                browser: device_info.browser,
+                isMobile: device_info.isMobile,
+              }
+            : null,
+        });
+
+        // Add device info and IP address to the application data
+        const dataWithDeviceInfo = {
+          ...applicationData,
+          device_info,
+          ip_address: ipAddress,
+        };
+
+        const validatedData =
+          insertDriverApplicationSchema.parse(dataWithDeviceInfo);
+        const application = await db.createDriverApplication(validatedData);
+        console.log("Application created successfully:", {
+          id: application.id,
+          companyId: application.company_id,
+          ipAddress,
+          deviceType: device_info?.deviceType,
+        });
+
+        // Log the application creation
         try {
           const loggingService = new LoggingService(
             await LoggingService.extractContextFromRequest(req)
@@ -155,319 +144,359 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           await loggingService.log(
             "driver_applications",
             application.id,
-            "background_check_initiated"
+            "created",
+            { metadata: { company_id: application.company_id } }
           );
         } catch (logError) {
-          console.error("Failed to log background check initiation:", logError);
+          console.error("Failed to log application creation:", logError);
+          // Don't fail the request if logging fails
         }
-      }
 
-      res.status(201).json({
-        success: true,
-        message: "Driver application submitted successfully",
-        data: application,
-      });
-    } catch (error) {
-      console.error("Error in POST /api/driver-applications:", {
-        error: error instanceof Error ? error.message : JSON.stringify(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body,
-        timestamp: new Date().toISOString(),
-      });
+        // Initiate background check process
+        if (application.consentToBackgroundCheck === 1) {
+          console.log("Background check consent given, initiating process...");
+          // backgroundCheckService.initiateBackgroundCheck(application.id);
 
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          success: false,
-          message: "Validation error",
-          errors: error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-            code: err.code,
-          })),
+          // Log background check initiation
+          try {
+            const loggingService = new LoggingService(
+              await LoggingService.extractContextFromRequest(req)
+            );
+            await loggingService.log(
+              "driver_applications",
+              application.id,
+              "background_check_initiated"
+            );
+          } catch (logError) {
+            console.error(
+              "Failed to log background check initiation:",
+              logError
+            );
+          }
+        }
+
+        res.status(201).json({
+          success: true,
+          message: "Driver application submitted successfully",
+          data: application,
         });
-      } else if (error instanceof Error) {
-        // Check for specific database errors
-        if (error.message.includes("duplicate key")) {
-          res.status(409).json({
-            success: false,
-            message: "Application already exists",
-            error: "DUPLICATE_APPLICATION",
-          });
-        } else if (error.message.includes("foreign key")) {
+      } catch (error) {
+        console.error("Error in POST /api/driver-applications:", {
+          error: error instanceof Error ? error.message : JSON.stringify(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
+        });
+
+        if (error instanceof z.ZodError) {
           res.status(400).json({
             success: false,
-            message: "Invalid company ID",
-            error: "INVALID_COMPANY",
+            message: "Validation error",
+            errors: error.errors.map((err) => ({
+              field: err.path.join("."),
+              message: err.message,
+              code: err.code,
+            })),
           });
+        } else if (error instanceof Error) {
+          // Check for specific database errors
+          if (error.message.includes("duplicate key")) {
+            res.status(409).json({
+              success: false,
+              message: "Application already exists",
+              error: "DUPLICATE_APPLICATION",
+            });
+          } else if (error.message.includes("foreign key")) {
+            res.status(400).json({
+              success: false,
+              message: "Invalid company ID",
+              error: "INVALID_COMPANY",
+            });
+          } else {
+            res.status(500).json({
+              success: false,
+              message: "Internal server error",
+              error: error.message,
+            });
+          }
         } else {
           res.status(500).json({
             success: false,
             message: "Internal server error",
-            error: error.message,
+            error: "UNKNOWN_ERROR",
           });
         }
-      } else {
-        res.status(500).json({
-          success: false,
-          message: "Internal server error",
-          error: "UNKNOWN_ERROR",
-        });
       }
     }
-  });
+  );
 
   // Get all driver applications (rate limited)
-  app.get("/api/v1/driver-applications", apiLimiter, async (req, res) => {
-    try {
-      console.log("Fetching all driver applications...");
-
-      const applications = await db.getAllDriverApplications();
-      console.log(`Retrieved ${applications.length} applications`);
-
-      res.json({
-        success: true,
-        message: `Retrieved ${applications.length} applications`,
-        data: applications,
-      });
-    } catch (error) {
-      console.error("Error in GET /api/driver-applications:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve applications",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Get driver application by ID
-  app.get("/api/v1/driver-applications/:id", apiLimiter, async (req, res) => {
-    try {
-      const id = req.params.id;
-
-      if (!id || id.trim() === "") {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid application ID",
-          error: "INVALID_ID",
-        });
-      }
-
-      console.log(`Fetching driver application with ID: ${id}`);
-
-      const application = await db.getDriverApplication(id);
-
-      if (!application) {
-        console.log(`Application with ID ${id} not found`);
-        return res.status(404).json({
-          success: false,
-          message: "Application not found",
-          error: "NOT_FOUND",
-        });
-      }
-
-      console.log(
-        `Retrieved application: ${application.first_name} ${application.last_name}`
-      );
-
-      res.json({
-        success: true,
-        message: "Application retrieved successfully",
-        data: application,
-      });
-    } catch (error) {
-      console.error(`Error in GET /api/driver-applications/${req.params.id}:`, {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        id: req.params.id,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve application",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Update driver application
-  app.put("/api/v1/driver-applications/:id", apiLimiter, async (req, res) => {
-    try {
-      const id = req.params.id;
-
-      // For signature updates, we only need to validate the signature fields
-      // Check if this is a signature-only update
-      const hasSignatureFields =
-        req.body.fair_credit_reporting_act_consent_signature ||
-        req.body.fmcsa_clearinghouse_consent_signature ||
-        req.body.drug_test_consent_signature ||
-        req.body.motor_vehicle_record_consent_signature ||
-        req.body.general_consent_signature;
-
-      // Check if this is a document photo update
-      const hasDocumentPhotoFields =
-        req.body.license_photo || req.body.medical_card_photo;
-
-      let validatedData;
-
-      if (hasSignatureFields) {
-        // This is a signature update - only validate signature fields
-        // For updates, we don't need the data field since it's already uploaded
-        const signatureUpdateSchema = z.object({
-          fair_credit_reporting_act_consent_signature: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-            })
-            .optional(),
-          fmcsa_clearinghouse_consent_signature: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-            })
-            .optional(),
-          drug_test_consent_signature: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-            })
-            .optional(),
-          motor_vehicle_record_consent_signature: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-            })
-            .optional(),
-          general_consent_signature: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-            })
-            .optional(),
-        });
-
-        validatedData = signatureUpdateSchema.parse(req.body);
-      } else if (hasDocumentPhotoFields) {
-        // This is a document photo update - only validate document photo fields
-        const documentPhotoUpdateSchema = z.object({
-          license_photo: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-              filename: z.string().optional(),
-              contentType: z.string().optional(),
-              size: z.number().optional(),
-            })
-            .optional(),
-          medical_card_photo: z
-            .object({
-              uploaded: z.boolean(),
-              url: z.string().optional(),
-              signedUrl: z.string().optional(),
-              path: z.string().optional(),
-              timestamp: z.string().optional(),
-              filename: z.string().optional(),
-              contentType: z.string().optional(),
-              size: z.number().optional(),
-            })
-            .optional(),
-        });
-
-        validatedData = documentPhotoUpdateSchema.parse(req.body);
-      } else {
-        // This is a full application update - validate all fields
-        validatedData = insertDriverApplicationSchema.parse(req.body);
-      }
-
-      console.log("Validated data:", validatedData);
-
-      // Get the original application to track changes
-      const originalApplication = await db.getDriverApplication(id);
-
-      const application = await db.updateDriverApplication(id, validatedData);
-
-      // Log the application update
+  app.get(
+    "/api/v1/driver-applications",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
       try {
-        const changes: Record<string, any> = {};
+        console.log("Fetching all driver applications...");
 
-        // Track what changed
-        Object.keys(validatedData).forEach((key) => {
-          const newValue = (validatedData as any)[key];
-          const oldValue = (originalApplication as any)[key];
-          if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
-            changes[key] = { from: oldValue, to: newValue };
-          }
+        const applications = await db.getAllDriverApplications();
+        console.log(`Retrieved ${applications.length} applications`);
+
+        res.json({
+          success: true,
+          message: `Retrieved ${applications.length} applications`,
+          data: applications,
         });
-
-        const loggingService = new LoggingService(
-          await LoggingService.extractContextFromRequest(req)
-        );
-        await loggingService.log("driver_applications", id, "updated", {
-          changes,
-        });
-      } catch (logError) {
-        console.error("Failed to log application update:", logError);
-        // Don't fail the request if logging fails
-      }
-
-      res.json({
-        success: true,
-        message: "Application updated successfully",
-        data: application,
-      });
-    } catch (error) {
-      console.error(
-        `Error in PUT /api/v1/driver-applications/${req.params.id}:`,
-        {
+      } catch (error) {
+        console.error("Error in GET /api/driver-applications:", {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-          id: req.params.id,
           timestamp: new Date().toISOString(),
-        }
-      );
-
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          success: false,
-          message: "Validation error",
-          errors: error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-            code: err.code,
-          })),
         });
-      } else {
+
         res.status(500).json({
           success: false,
-          message: "Failed to update application",
+          message: "Failed to retrieve applications",
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
-  });
+  );
+
+  // Get driver application by ID
+  app.get(
+    "/api/v1/driver-applications/:id",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        if (!id || id.trim() === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid application ID",
+            error: "INVALID_ID",
+          });
+        }
+
+        console.log(`Fetching driver application with ID: ${id}`);
+
+        const application = await db.getDriverApplication(id);
+
+        if (!application) {
+          console.log(`Application with ID ${id} not found`);
+          return res.status(404).json({
+            success: false,
+            message: "Application not found",
+            error: "NOT_FOUND",
+          });
+        }
+
+        console.log(
+          `Retrieved application: ${application.first_name} ${application.last_name}`
+        );
+
+        res.json({
+          success: true,
+          message: "Application retrieved successfully",
+          data: application,
+        });
+      } catch (error) {
+        console.error(
+          `Error in GET /api/driver-applications/${req.params.id}:`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            id: req.params.id,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve application",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  );
+
+  // Update driver application
+  app.put(
+    "/api/v1/driver-applications/:id",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        // For signature updates, we only need to validate the signature fields
+        // Check if this is a signature-only update
+        const hasSignatureFields =
+          req.body.fair_credit_reporting_act_consent_signature ||
+          req.body.fmcsa_clearinghouse_consent_signature ||
+          req.body.drug_test_consent_signature ||
+          req.body.motor_vehicle_record_consent_signature ||
+          req.body.general_consent_signature;
+
+        // Check if this is a document photo update
+        const hasDocumentPhotoFields =
+          req.body.license_photo || req.body.medical_card_photo;
+
+        let validatedData;
+
+        if (hasSignatureFields) {
+          // This is a signature update - only validate signature fields
+          // For updates, we don't need the data field since it's already uploaded
+          const signatureUpdateSchema = z.object({
+            fair_credit_reporting_act_consent_signature: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+              })
+              .optional(),
+            fmcsa_clearinghouse_consent_signature: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+              })
+              .optional(),
+            drug_test_consent_signature: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+              })
+              .optional(),
+            motor_vehicle_record_consent_signature: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+              })
+              .optional(),
+            general_consent_signature: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+              })
+              .optional(),
+          });
+
+          validatedData = signatureUpdateSchema.parse(req.body);
+        } else if (hasDocumentPhotoFields) {
+          // This is a document photo update - only validate document photo fields
+          const documentPhotoUpdateSchema = z.object({
+            license_photo: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+                filename: z.string().optional(),
+                contentType: z.string().optional(),
+                size: z.number().optional(),
+              })
+              .optional(),
+            medical_card_photo: z
+              .object({
+                uploaded: z.boolean(),
+                url: z.string().optional(),
+                signedUrl: z.string().optional(),
+                path: z.string().optional(),
+                timestamp: z.string().optional(),
+                filename: z.string().optional(),
+                contentType: z.string().optional(),
+                size: z.number().optional(),
+              })
+              .optional(),
+          });
+
+          validatedData = documentPhotoUpdateSchema.parse(req.body);
+        } else {
+          // This is a full application update - validate all fields
+          validatedData = insertDriverApplicationSchema.parse(req.body);
+        }
+
+        console.log("Validated data:", validatedData);
+
+        // Get the original application to track changes
+        const originalApplication = await db.getDriverApplication(id);
+
+        const application = await db.updateDriverApplication(id, validatedData);
+
+        // Log the application update
+        try {
+          const changes: Record<string, any> = {};
+
+          // Track what changed
+          Object.keys(validatedData).forEach((key) => {
+            const newValue = (validatedData as any)[key];
+            const oldValue = (originalApplication as any)[key];
+            if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+              changes[key] = { from: oldValue, to: newValue };
+            }
+          });
+
+          const loggingService = new LoggingService(
+            await LoggingService.extractContextFromRequest(req)
+          );
+          await loggingService.log("driver_applications", id, "updated", {
+            changes,
+          });
+        } catch (logError) {
+          console.error("Failed to log application update:", logError);
+          // Don't fail the request if logging fails
+        }
+
+        res.json({
+          success: true,
+          message: "Application updated successfully",
+          data: application,
+        });
+      } catch (error) {
+        console.error(
+          `Error in PUT /api/v1/driver-applications/${req.params.id}:`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            id: req.params.id,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        if (error instanceof z.ZodError) {
+          res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error.errors.map((err) => ({
+              field: err.path.join("."),
+              message: err.message,
+              code: err.code,
+            })),
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            message: "Failed to update application",
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+    }
+  );
 
   // Get background check status
   app.get("/api/driver-applications/:id/background-check", async (req, res) => {
@@ -532,285 +561,298 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Upload signature (rate limited)
-  app.post("/api/v1/signatures/upload", uploadLimiter, async (req, res) => {
-    try {
-      const { signatureData, applicationId, companyName, signatureType } =
-        req.body;
-
-      if (!signatureData || !applicationId || !companyName || !signatureType) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Missing required fields: signatureData, applicationId, companyName, signatureType",
-        });
-      }
-
-      console.log("Signature upload request:", {
-        applicationId,
-        companyName,
-        signatureType,
-        hasSignatureData: !!signatureData,
-      });
-
-      // Try to upload to Supabase Storage first
-      let uploadSuccess = false;
-      let storageData = null;
-
+  app.post(
+    "/api/v1/signatures/upload",
+    conditionalRateLimit(uploadLimiter),
+    async (req, res) => {
       try {
-        // Convert data URL to blob
-        const response = await fetch(signatureData);
-        const blob = await response.blob();
+        const { signatureData, applicationId, companyName, signatureType } =
+          req.body;
 
-        // Create file path with signature type
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const fileName = `${applicationId}-${signatureType}-${timestamp}.png`;
-        const filePath = `${companyName}/${fileName}`;
-
-        console.log("Uploading signature to path:", filePath);
-
-        // First, check if the bucket exists and we have access
-        const { data: buckets, error: bucketsError } =
-          await supabase.storage.listBuckets();
-
-        if (bucketsError) {
-          console.error("Error listing buckets:", bucketsError);
-          throw new Error("Failed to access storage buckets");
-        }
-
-        console.log(
-          "Available buckets:",
-          buckets?.map((b: any) => b.name)
-        );
-
-        // Check if application-signatures bucket exists
-        const signaturesBucket = buckets?.find(
-          (b: any) => b.name === "application-signatures"
-        );
-        if (!signaturesBucket) {
-          console.error("application-signatures bucket not found");
-          throw new Error("Storage bucket not configured");
-        }
-
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from("application-signatures")
-          .upload(filePath, blob, {
-            contentType: "image/png",
-            cacheControl: "3600",
-            upsert: false,
+        if (
+          !signatureData ||
+          !applicationId ||
+          !companyName ||
+          !signatureType
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Missing required fields: signatureData, applicationId, companyName, signatureType",
           });
-
-        if (error) {
-          console.error("Supabase upload error:", error);
-          throw error;
         }
 
-        console.log("Signature uploaded successfully:", data);
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from("application-signatures")
-          .getPublicUrl(filePath);
-
-        // Get signed URL (valid for 1 hour)
-        const { data: signedUrlData } = await supabase.storage
-          .from("application-signatures")
-          .createSignedUrl(filePath, 60 * 60); // 1 hour
-
-        storageData = {
-          url: urlData.publicUrl,
-          signedUrl: signedUrlData?.signedUrl,
-          path: filePath,
-          timestamp: new Date().toISOString(),
-        };
-
-        uploadSuccess = true;
-      } catch (storageError) {
-        console.error(
-          "Storage upload failed, falling back to database storage:",
-          storageError
-        );
-
-        // Fallback: Store signature data directly in database
-        storageData = {
-          url: null,
-          signedUrl: null,
-          path: null,
-          data: signatureData, // Store the actual signature data
-          timestamp: new Date().toISOString(),
-        };
-
-        uploadSuccess = true; // Still consider it successful
-      }
-
-      res.json({
-        success: true,
-        message: uploadSuccess
-          ? "Signature uploaded successfully"
-          : "Signature stored in database",
-        data: {
-          ...storageData,
+        console.log("Signature upload request:", {
+          applicationId,
+          companyName,
           signatureType,
-          storedInDatabase: !storageData.url, // Flag to indicate if stored in DB
-        },
-      });
-    } catch (error) {
-      console.error("Error in POST /api/v1/signatures/upload:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Failed to upload signature",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Upload document photo (license or medical card)
-  app.post("/api/v1/documents/upload", uploadLimiter, async (req, res) => {
-    try {
-      const {
-        photoData,
-        applicationId,
-        companyName,
-        documentType,
-        filename,
-        contentType,
-      } = req.body;
-
-      if (!photoData || !applicationId || !companyName || !documentType) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Missing required fields: photoData, applicationId, companyName, documentType",
+          hasSignatureData: !!signatureData,
         });
-      }
 
-      console.log("Document photo upload request:", {
-        applicationId,
-        companyName,
-        documentType,
-        filename,
-        contentType,
-        hasPhotoData: !!photoData,
-      });
+        // Try to upload to Supabase Storage first
+        let uploadSuccess = false;
+        let storageData = null;
 
-      // Try to upload to Supabase Storage
-      let uploadSuccess = false;
-      let storageData = null;
+        try {
+          // Convert data URL to blob
+          const response = await fetch(signatureData);
+          const blob = await response.blob();
 
-      try {
-        // Convert data URL to blob
-        const response = await fetch(photoData);
-        const blob = await response.blob();
+          // Create file path with signature type
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const fileName = `${applicationId}-${signatureType}-${timestamp}.png`;
+          const filePath = `${companyName}/${fileName}`;
 
-        // Create file path with document type
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const safeFilename = filename || `${documentType}-${timestamp}`;
-        const fileExtension = contentType?.split("/")[1] || "jpg";
-        const fileName = `${applicationId}-${documentType}-${timestamp}.${fileExtension}`;
-        const filePath = `${companyName}/${fileName}`;
+          console.log("Uploading signature to path:", filePath);
 
-        console.log("Uploading document to path:", filePath);
+          // First, check if the bucket exists and we have access
+          const { data: buckets, error: bucketsError } =
+            await supabase.storage.listBuckets();
 
-        // First, check if the bucket exists and we have access
-        const { data: buckets, error: bucketsError } =
-          await supabase.storage.listBuckets();
+          if (bucketsError) {
+            console.error("Error listing buckets:", bucketsError);
+            throw new Error("Failed to access storage buckets");
+          }
 
-        if (bucketsError) {
-          console.error("Error listing buckets:", bucketsError);
-          throw new Error("Failed to access storage buckets");
-        }
-
-        console.log(
-          "Available buckets:",
-          buckets?.map((b: any) => b.name)
-        );
-
-        // Check if driver-file-documents bucket exists, create if not
-        const documentsBucket = buckets?.find(
-          (b: any) => b.name === "driver-file-documents"
-        );
-        if (!documentsBucket) {
-          console.log("driver-file-documents bucket not found, creating...");
-          const { error: createError } = await supabase.storage.createBucket(
-            "driver-file-documents",
-            {
-              public: false, // Keep documents private
-              allowedMimeTypes: ["image/jpeg", "image/png", "image/jpg"],
-              fileSizeLimit: 5242880, // 5MB limit
-            }
+          console.log(
+            "Available buckets:",
+            buckets?.map((b: any) => b.name)
           );
 
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-            throw new Error("Failed to create storage bucket");
+          // Check if application-signatures bucket exists
+          const signaturesBucket = buckets?.find(
+            (b: any) => b.name === "application-signatures"
+          );
+          if (!signaturesBucket) {
+            console.error("application-signatures bucket not found");
+            throw new Error("Storage bucket not configured");
           }
+
+          // Upload to Supabase Storage
+          const { data, error } = await supabase.storage
+            .from("application-signatures")
+            .upload(filePath, blob, {
+              contentType: "image/png",
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (error) {
+            console.error("Supabase upload error:", error);
+            throw error;
+          }
+
+          console.log("Signature uploaded successfully:", data);
+
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from("application-signatures")
+            .getPublicUrl(filePath);
+
+          // Get signed URL (valid for 1 hour)
+          const { data: signedUrlData } = await supabase.storage
+            .from("application-signatures")
+            .createSignedUrl(filePath, 60 * 60); // 1 hour
+
+          storageData = {
+            url: urlData.publicUrl,
+            signedUrl: signedUrlData?.signedUrl,
+            path: filePath,
+            timestamp: new Date().toISOString(),
+          };
+
+          uploadSuccess = true;
+        } catch (storageError) {
+          console.error(
+            "Storage upload failed, falling back to database storage:",
+            storageError
+          );
+
+          // Fallback: Store signature data directly in database
+          storageData = {
+            url: null,
+            signedUrl: null,
+            path: null,
+            data: signatureData, // Store the actual signature data
+            timestamp: new Date().toISOString(),
+          };
+
+          uploadSuccess = true; // Still consider it successful
         }
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from("driver-file-documents")
-          .upload(filePath, blob, {
-            contentType: contentType || "image/jpeg",
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (error) {
-          console.error("Supabase upload error:", error);
-          throw error;
-        }
-
-        console.log("Document uploaded successfully:", data);
-
-        // Get signed URL (valid for 1 hour) - documents are private
-        const { data: signedUrlData } = await supabase.storage
-          .from("driver-file-documents")
-          .createSignedUrl(filePath, 60 * 60); // 1 hour
-
-        storageData = {
-          uploaded: true,
-          url: null, // No public URL for documents
-          signedUrl: signedUrlData?.signedUrl,
-          path: filePath,
+        res.json({
+          success: true,
+          message: uploadSuccess
+            ? "Signature uploaded successfully"
+            : "Signature stored in database",
+          data: {
+            ...storageData,
+            signatureType,
+            storedInDatabase: !storageData.url, // Flag to indicate if stored in DB
+          },
+        });
+      } catch (error) {
+        console.error("Error in POST /api/v1/signatures/upload:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
           timestamp: new Date().toISOString(),
-          filename: safeFilename,
-          contentType: contentType || "image/jpeg",
-          size: blob.size,
-        };
+        });
 
-        uploadSuccess = true;
-      } catch (storageError) {
-        console.error("Storage upload failed:", storageError);
-        throw storageError; // Don't fallback to database for documents
+        res.status(500).json({
+          success: false,
+          message: "Failed to upload signature",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
-
-      res.json({
-        success: true,
-        message: "Document uploaded successfully",
-        data: {
-          ...storageData,
-          documentType,
-        },
-      });
-    } catch (error) {
-      console.error("Error in POST /api/v1/documents/upload:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Failed to upload document",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  });
+  );
+
+  // Upload document photo (license or medical card)
+  app.post(
+    "/api/v1/documents/upload",
+    conditionalRateLimit(uploadLimiter),
+    async (req, res) => {
+      try {
+        const {
+          photoData,
+          applicationId,
+          companyName,
+          documentType,
+          filename,
+          contentType,
+        } = req.body;
+
+        if (!photoData || !applicationId || !companyName || !documentType) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Missing required fields: photoData, applicationId, companyName, documentType",
+          });
+        }
+
+        console.log("Document photo upload request:", {
+          applicationId,
+          companyName,
+          documentType,
+          filename,
+          contentType,
+          hasPhotoData: !!photoData,
+        });
+
+        // Try to upload to Supabase Storage
+        let uploadSuccess = false;
+        let storageData = null;
+
+        try {
+          // Convert data URL to blob
+          const response = await fetch(photoData);
+          const blob = await response.blob();
+
+          // Create file path with document type
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const safeFilename = filename || `${documentType}-${timestamp}`;
+          const fileExtension = contentType?.split("/")[1] || "jpg";
+          const fileName = `${applicationId}-${documentType}-${timestamp}.${fileExtension}`;
+          const filePath = `${companyName}/${fileName}`;
+
+          console.log("Uploading document to path:", filePath);
+
+          // First, check if the bucket exists and we have access
+          const { data: buckets, error: bucketsError } =
+            await supabase.storage.listBuckets();
+
+          if (bucketsError) {
+            console.error("Error listing buckets:", bucketsError);
+            throw new Error("Failed to access storage buckets");
+          }
+
+          console.log(
+            "Available buckets:",
+            buckets?.map((b: any) => b.name)
+          );
+
+          // Check if driver-file-documents bucket exists, create if not
+          const documentsBucket = buckets?.find(
+            (b: any) => b.name === "driver-file-documents"
+          );
+          if (!documentsBucket) {
+            console.log("driver-file-documents bucket not found, creating...");
+            const { error: createError } = await supabase.storage.createBucket(
+              "driver-file-documents",
+              {
+                public: false, // Keep documents private
+                allowedMimeTypes: ["image/jpeg", "image/png", "image/jpg"],
+                fileSizeLimit: 5242880, // 5MB limit
+              }
+            );
+
+            if (createError) {
+              console.error("Error creating bucket:", createError);
+              throw new Error("Failed to create storage bucket");
+            }
+          }
+
+          // Upload to Supabase Storage
+          const { data, error } = await supabase.storage
+            .from("driver-file-documents")
+            .upload(filePath, blob, {
+              contentType: contentType || "image/jpeg",
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (error) {
+            console.error("Supabase upload error:", error);
+            throw error;
+          }
+
+          console.log("Document uploaded successfully:", data);
+
+          // Get signed URL (valid for 1 hour) - documents are private
+          const { data: signedUrlData } = await supabase.storage
+            .from("driver-file-documents")
+            .createSignedUrl(filePath, 60 * 60); // 1 hour
+
+          storageData = {
+            uploaded: true,
+            url: null, // No public URL for documents
+            signedUrl: signedUrlData?.signedUrl,
+            path: filePath,
+            timestamp: new Date().toISOString(),
+            filename: safeFilename,
+            contentType: contentType || "image/jpeg",
+            size: blob.size,
+          };
+
+          uploadSuccess = true;
+        } catch (storageError) {
+          console.error("Storage upload failed:", storageError);
+          throw storageError; // Don't fallback to database for documents
+        }
+
+        res.json({
+          success: true,
+          message: "Document uploaded successfully",
+          data: {
+            ...storageData,
+            documentType,
+          },
+        });
+      } catch (error) {
+        console.error("Error in POST /api/v1/documents/upload:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
+
+        res.status(500).json({
+          success: false,
+          message: "Failed to upload document",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  );
 
   // Application status management endpoints
   app.post(
@@ -854,7 +896,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   app.put(
     "/api/v1/driver-applications/:id/status",
-    apiLimiter,
+    conditionalRateLimit(apiLimiter),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -938,7 +980,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   app.post(
     "/api/v1/driver-applications/:id/hire",
-    apiLimiter,
+    conditionalRateLimit(apiLimiter),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -979,32 +1021,36 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   );
 
   // Get all companies
-  app.get("/api/v1/companies", apiLimiter, async (req, res) => {
-    try {
-      console.log("Fetching all companies...");
+  app.get(
+    "/api/v1/companies",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        console.log("Fetching all companies...");
 
-      const companies = await db.getAllCompanies();
-      console.log(`Retrieved ${companies.length} companies`);
+        const companies = await db.getAllCompanies();
+        console.log(`Retrieved ${companies.length} companies`);
 
-      res.json({
-        success: true,
-        message: `Retrieved ${companies.length} companies`,
-        data: companies,
-      });
-    } catch (error) {
-      console.error("Error in GET /api/v1/companies:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
+        res.json({
+          success: true,
+          message: `Retrieved ${companies.length} companies`,
+          data: companies,
+        });
+      } catch (error) {
+        console.error("Error in GET /api/v1/companies:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
 
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve companies",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve companies",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
-  });
+  );
 
   // Get company by slug
   app.get("/api/v1/companies/slug/:slug", async (req, res) => {
@@ -1255,36 +1301,43 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // Get all drivers with pagination
-  app.get("/api/v1/drivers", apiLimiter, async (req, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+  app.get(
+    "/api/v1/drivers",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
 
-      console.log(`Fetching drivers page ${page} with limit ${limit}...`);
+        console.log(`Fetching drivers page ${page} with limit ${limit}...`);
 
-      const { data: drivers, pagination } = await db.getAllDrivers(page, limit);
-      console.log(`Retrieved ${drivers.length} drivers`);
+        const { data: drivers, pagination } = await db.getAllDrivers(
+          page,
+          limit
+        );
+        console.log(`Retrieved ${drivers.length} drivers`);
 
-      res.json({
-        success: true,
-        message: `Retrieved ${drivers.length} drivers`,
-        data: drivers,
-        pagination,
-      });
-    } catch (error) {
-      console.error("Error in GET /api/v1/drivers:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
+        res.json({
+          success: true,
+          message: `Retrieved ${drivers.length} drivers`,
+          data: drivers,
+          pagination,
+        });
+      } catch (error) {
+        console.error("Error in GET /api/v1/drivers:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
 
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve drivers",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve drivers",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
-  });
+  );
 
   // Get driver by ID
   app.get("/api/v1/drivers/:id", async (req, res) => {
@@ -1525,144 +1578,152 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // ===============
 
   // Send template email
-  app.post("/api/v1/emails/send-template", emailLimiter, async (req, res) => {
-    try {
-      const { templateType, context, options } = req.body;
+  app.post(
+    "/api/v1/emails/send-template",
+    conditionalRateLimit(emailLimiter),
+    async (req, res) => {
+      try {
+        const { templateType, context, options } = req.body;
 
-      // Validate required fields
-      if (!templateType || !context) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required fields: templateType and context",
-          error: "MISSING_REQUIRED_FIELDS",
+        // Validate required fields
+        if (!templateType || !context) {
+          return res.status(400).json({
+            success: false,
+            message: "Missing required fields: templateType and context",
+            error: "MISSING_REQUIRED_FIELDS",
+          });
+        }
+
+        // Validate template type
+        if (!Object.values(EmailTemplateType).includes(templateType)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid template type",
+            error: "INVALID_TEMPLATE_TYPE",
+            validTypes: Object.values(EmailTemplateType),
+          });
+        }
+
+        console.log(`Sending template email: ${templateType}`, {
+          driverId: context.driver?.id,
+          driverEmail: context.driver?.email,
+          companyId: context.company?.id,
         });
-      }
 
-      // Validate template type
-      if (!Object.values(EmailTemplateType).includes(templateType)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid template type",
-          error: "INVALID_TEMPLATE_TYPE",
-          validTypes: Object.values(EmailTemplateType),
+        const success = await emailService.sendTemplateEmail(
+          templateType,
+          context,
+          options
+        );
+
+        if (success) {
+          console.log(`Template email sent successfully: ${templateType}`);
+          res.json({
+            success: true,
+            message: "Email sent successfully",
+            data: {
+              templateType,
+              sentTo: options?.to || context.driver?.email,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } else {
+          console.error(`Failed to send template email: ${templateType}`);
+          res.status(500).json({
+            success: false,
+            message: "Failed to send email",
+            error: "EMAIL_SEND_FAILED",
+          });
+        }
+      } catch (error) {
+        console.error("Error in POST /api/v1/emails/send-template:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
         });
-      }
 
-      console.log(`Sending template email: ${templateType}`, {
-        driverId: context.driver?.id,
-        driverEmail: context.driver?.email,
-        companyId: context.company?.id,
-      });
-
-      const success = await emailService.sendTemplateEmail(
-        templateType,
-        context,
-        options
-      );
-
-      if (success) {
-        console.log(`Template email sent successfully: ${templateType}`);
-        res.json({
-          success: true,
-          message: "Email sent successfully",
-          data: {
-            templateType,
-            sentTo: options?.to || context.driver?.email,
-            timestamp: new Date().toISOString(),
-          },
-        });
-      } else {
-        console.error(`Failed to send template email: ${templateType}`);
         res.status(500).json({
           success: false,
-          message: "Failed to send email",
-          error: "EMAIL_SEND_FAILED",
+          message: "Internal server error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    } catch (error) {
-      console.error("Error in POST /api/v1/emails/send-template:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  });
+  );
 
   // Send custom email
-  app.post("/api/v1/emails/send-custom", emailLimiter, async (req, res) => {
-    try {
-      const { to, from, subject, html, text } = req.body;
+  app.post(
+    "/api/v1/emails/send-custom",
+    conditionalRateLimit(emailLimiter),
+    async (req, res) => {
+      try {
+        const { to, from, subject, html, text } = req.body;
 
-      // Validate required fields
-      if (!to || !subject || !html) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required fields: to, subject, and html",
-          error: "MISSING_REQUIRED_FIELDS",
+        // Validate required fields
+        if (!to || !subject || !html) {
+          return res.status(400).json({
+            success: false,
+            message: "Missing required fields: to, subject, and html",
+            error: "MISSING_REQUIRED_FIELDS",
+          });
+        }
+
+        console.log("Sending custom email", {
+          to,
+          from: from || "default",
+          subject,
+          hasHtml: !!html,
+          hasText: !!text,
         });
-      }
 
-      console.log("Sending custom email", {
-        to,
-        from: from || "default",
-        subject,
-        hasHtml: !!html,
-        hasText: !!text,
-      });
-
-      const success = await emailService.sendCustomEmail({
-        to,
-        from: from || undefined,
-        subject,
-        html,
-        text,
-      });
-
-      if (success) {
-        console.log("Custom email sent successfully");
-        res.json({
-          success: true,
-          message: "Email sent successfully",
-          data: {
-            sentTo: to,
-            timestamp: new Date().toISOString(),
-          },
+        const success = await emailService.sendCustomEmail({
+          to,
+          from: from || undefined,
+          subject,
+          html,
+          text,
         });
-      } else {
-        console.error("Failed to send custom email");
+
+        if (success) {
+          console.log("Custom email sent successfully");
+          res.json({
+            success: true,
+            message: "Email sent successfully",
+            data: {
+              sentTo: to,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } else {
+          console.error("Failed to send custom email");
+          res.status(500).json({
+            success: false,
+            message: "Failed to send email",
+            error: "EMAIL_SEND_FAILED",
+          });
+        }
+      } catch (error) {
+        console.error("Error in POST /api/v1/emails/send-custom:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
+        });
+
         res.status(500).json({
           success: false,
-          message: "Failed to send email",
-          error: "EMAIL_SEND_FAILED",
+          message: "Internal server error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    } catch (error) {
-      console.error("Error in POST /api/v1/emails/send-custom:", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body,
-        timestamp: new Date().toISOString(),
-      });
-
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  });
+  );
 
   // Send application submission emails (combines template + admin notification)
   app.post(
     "/api/v1/emails/application-submitted",
-    emailLimiter,
+    conditionalRateLimit(emailLimiter),
     async (req, res) => {
       try {
         const { application, company, adminEmail } = req.body;
@@ -1767,7 +1828,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Send background check emails
   app.post(
     "/api/v1/emails/background-check",
-    emailLimiter,
+    conditionalRateLimit(emailLimiter),
     async (req, res) => {
       try {
         const { action, application, company } = req.body;

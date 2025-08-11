@@ -1,8 +1,7 @@
 export { AddressHistoryStep } from "./AddressHistoryStep";
-export { ApplicationCard } from "./ApplicationCard";
-export { ApplicationDetailsView } from "./ApplicationDetailsView";
 export { ApplicationsTable } from "./ApplicationsTable";
-export { BackgroundCheckStep } from "./BackgroundCheckStep";
+export { CompaniesTable } from "./CompaniesTable";
+export { CompanyDetailsView } from "./CompanyDetailsView";
 export { ContactAddressStep } from "./ContactAddressStep";
 export { EmploymentHistoryStep } from "./EmploymentHistoryStep";
 export { FormNavigation } from "./FormNavigation";
@@ -11,9 +10,6 @@ export { PersonalInfoStep } from "./PersonalInfoStep";
 export { ProgressStepper } from "./ProgressStepper";
 
 export type { AddressHistoryStepProps } from "./AddressHistoryStep";
-export type { ApplicationDetailsViewProps } from "./ApplicationDetailsView";
-export type { ApplicationsTableProps } from "./ApplicationsTable";
-export type { BackgroundCheckStepProps } from "./BackgroundCheckStep";
 export type { ContactAddressStepProps } from "./ContactAddressStep";
 export type { EmploymentHistoryStepProps } from "./EmploymentHistoryStep";
 export type { FormNavigationProps } from "./FormNavigation";

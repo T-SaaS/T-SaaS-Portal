@@ -45,11 +45,6 @@ const corsOptions = {
       process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()) || [];
     allowedOrigins.push(...envOrigins);
 
-    // Log CORS requests in development
-    if (process.env.NODE_ENV === "development") {
-      log(`CORS request from origin: ${origin}`);
-    }
-
     // Normalize origin by removing trailing slash for comparison
     const normalizedOrigin = origin?.replace(/\/$/, "");
     const normalizedAllowedOrigins = allowedOrigins.map((o) =>
@@ -110,7 +105,11 @@ const createRateLimiter = (windowMs: number, max: number, message?: string) => {
       return `${ip}-${userAgent}`;
     },
     handler: (req, res) => {
-      log(`Rate limit exceeded for IP: ${req.ip} - ${req.method} ${req.path}`);
+      log(
+        `Rate limit exceeded for IP: ${req.ip} - ${req.method} ${
+          req.path
+        } - User-Agent: ${req.get("User-Agent")}`
+      );
       res.status(429).json({
         error: "Too many requests",
         message:
@@ -142,8 +141,17 @@ const apiLimiter = createRateLimiter(
   "Too many API requests, please try again in 15 minutes."
 );
 
-// Apply rate limiting
-app.use(generalLimiter); // Apply to all routes
+// Apply rate limiting - skip for development static assets
+if (process.env.NODE_ENV === "development") {
+  // In development, disable rate limiting for now to debug issues
+  log("Rate limiting disabled in development mode");
+  // app.use("/api", generalLimiter);
+  // app.use("/api/auth", authLimiter);
+} else {
+  // In production, apply to all routes
+  app.use(generalLimiter);
+  app.use("/api/auth", authLimiter); // Stricter auth rate limiting
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

@@ -6,6 +6,8 @@ import type {
   UpdateDriver,
 } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
+import { config } from "dotenv";
+config();
 
 if (!process.env.VITE_SUPABASE_URL) {
   throw new Error(

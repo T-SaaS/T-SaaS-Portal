@@ -17,13 +17,17 @@ import {
   User,
   Menu,
   X,
+  Building2,
 } from "lucide-react";
 import { NavigationItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
+import { useRouteTitle } from "@/routes";
 
+// Main navigation items for the sidebar
 const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Companies", href: "/companies", icon: Building2 },
   { name: "Applications", href: "/applications", icon: FileText },
   { name: "Drivers", href: "/drivers", icon: Users },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -35,6 +39,9 @@ export function PrivateTemplate() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Get the current page title from the routes configuration
+  const currentTitle = useRouteTitle(location.pathname);
 
   // Check if we're on mobile
   useEffect(() => {
@@ -187,8 +194,7 @@ export function PrivateTemplate() {
                 </Button>
               )}
               <h2 className="text-2xl font-bold text-slate-900">
-                {navigation.find((item) => item.href === location.pathname)
-                  ?.name || ""}
+                {currentTitle || ""}
               </h2>
             </div>
           </div>
