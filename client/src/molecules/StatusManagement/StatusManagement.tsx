@@ -15,12 +15,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { DriverApplication } from "@/types";
 import { ArrowRight, CheckCircle, XCircle } from "lucide-react";
 
-interface StatusManagementProps {
+export interface StatusManagementProps {
   application: DriverApplication;
   onStatusChange: () => void;
 }
 
-interface StatusTransition {
+export interface StatusTransition {
   currentStatus: string;
   availableTransitions: string[];
 }

@@ -2,7 +2,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ProgressStepperProps {
+export interface ProgressStepperProps {
   currentStep: number;
   totalSteps: number;
   stepTitles: string[];

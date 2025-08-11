@@ -13,6 +13,9 @@ import {
   CompaniesPage,
   CompanyDetailsPage,
   CompanyEditPage,
+  DriversPage,
+  DriverDetailsPage,
+  DriverEditPage,
 } from "@/pages";
 import { DriverFormPage } from "@/pages/DriverFormPage/DriverFormPage";
 import { ThankYouPage } from "@/pages/ThankYouPage/ThankYouPage";
@@ -81,6 +84,21 @@ export const privateRoutes: RouteConfig[] = [
     path: "/companies/:id/edit",
     element: <CompanyEditPage />,
     title: "Edit Company",
+  },
+  {
+    path: "/drivers",
+    element: <DriversPage />,
+    title: "Drivers",
+  },
+  {
+    path: "/drivers/:id",
+    element: <DriverDetailsPage />,
+    title: "Driver Details",
+  },
+  {
+    path: "/drivers/:id/edit",
+    element: <DriverEditPage />,
+    title: "Edit Driver",
   },
   {
     path: "/devices",

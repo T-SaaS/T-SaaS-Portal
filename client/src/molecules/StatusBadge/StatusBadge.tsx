@@ -1,7 +1,7 @@
 import { Badge } from "@/atoms/Badge";
 import { DriverApplication } from "@/types";
 
-interface StatusBadgeProps {
+export interface StatusBadgeProps {
   status: DriverApplication["status"] | "pending" | "approved" | "rejected";
   className?: string;
 }

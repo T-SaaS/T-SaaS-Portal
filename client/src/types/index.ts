@@ -4,10 +4,11 @@ import type {
   BackgroundCheckResult,
   Job,
   Company as SharedCompany,
+  Driver as SharedDriver,
 } from "@shared/schema";
 
 // Re-export shared types for convenience
-export type { Address, BackgroundCheckResult, Job };
+export type { Address, BackgroundCheckResult, SharedDriver as Driver, Job };
 
 // Client-specific DriverApplication type (with string ID for client usage)
 export interface DriverApplication
