@@ -48,18 +48,17 @@ export interface DriverApplication {
   last_name: string;
   status:
     | "New"
-    | "Reviewing Application"
+    | "Under Review"
     | "On Hold"
-    | "Signed Consents"
-    | "Run MVR"
+    | "MVR Check"
     | "Drug Screening"
-    | "Pre-Employment"
-    | "Hire Driver"
+    | "PSP Review"
+    | "Background Complete"
     | "Approved"
+    | "Hired"
     | "Rejected"
     | "Disqualified"
-    | "Expired"
-    | "Not Hired";
+    | "Expired";
   dob: string;
   phone: string;
   email: string;

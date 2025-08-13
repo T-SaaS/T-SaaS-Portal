@@ -2,22 +2,26 @@ import { PageHeader } from "@/atoms/PageHeader";
 import { ActionButton } from "@/atoms/ActionButton";
 import { InfoCard } from "@/molecules/InfoCard";
 import { StatusManagement } from "@/molecules/StatusManagement";
+import { ApplicationStatusCard } from "@/organisms/ApplicationStatusCard";
 import { Company, DriverApplication, Address, Job } from "@/types";
+import { Button } from "@/atoms/Button";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 
 // Closed statuses that prevent editing
 const CLOSED_STATUSES: DriverApplication["status"][] = [
-  "Not Hired",
+  "Hired",
   "Disqualified",
   "Rejected",
   "Expired",
-  "Approved",
 ];
 import {
   Download,
   CheckCircle,
   XCircle,
   Pencil,
-  Save,
   User,
   Phone,
   FileText,
@@ -30,7 +34,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 export interface ApplicationDetailsViewProps {
   application: DriverApplication;
@@ -59,6 +62,79 @@ export function ApplicationDetailsView({
   onCancel,
   onStatusChange,
 }: ApplicationDetailsViewProps) {
+  const navigate = useNavigate();
+  const [hireNotes, setHireNotes] = useState<string>("");
+  const [hireLoading, setHireLoading] = useState(false);
+  const [hireError, setHireError] = useState<string | null>(null);
+  const [hireSuccess, setHireSuccess] = useState<string | null>(null);
+  const [statusNotes, setStatusNotes] = useState<string>("");
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
+
+  const handleBack = () => {
+    navigate("/applications");
+  };
+
+  const handleHireDriver = async () => {
+    setHireLoading(true);
+    setHireError(null);
+    setHireSuccess(null);
+
+    try {
+      const response = await apiRequest(
+        "POST",
+        `/api/v1/driver-applications/${application.id}/hire`,
+        {
+          notes: hireNotes.trim() || undefined,
+        }
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        setHireSuccess(`${result.message} Driver ID: ${result.data.driverId}`);
+        setHireNotes("");
+        onStatusChange?.();
+      } else {
+        setHireError(result.message || "Failed to hire driver");
+      }
+    } catch (err) {
+      setHireError("Failed to hire driver");
+    } finally {
+      setHireLoading(false);
+    }
+  };
+
+  const handleStatusTransition = async (targetStatus: string) => {
+    setStatusLoading(true);
+    setStatusError(null);
+    setStatusSuccess(null);
+
+    try {
+      const response = await apiRequest(
+        "PUT",
+        `/api/v1/driver-applications/${application.id}/status`,
+        {
+          status: targetStatus,
+          notes: statusNotes.trim() || undefined,
+        }
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        setStatusSuccess(result.message);
+        setStatusNotes("");
+        onStatusChange?.();
+      } else {
+        setStatusError(result.message || "Failed to update status");
+      }
+    } catch (err) {
+      setStatusError("Failed to update status");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
   const formatDateRange = (
     fromMonth: number,
     fromYear: number,
@@ -286,32 +362,70 @@ export function ApplicationDetailsView({
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Application Details"
-        description="View and manage driver application"
-      >
-        {isEditing ? (
-          <>
-            <ActionButton icon={Save} onClick={onSave}>
-              Save Changes
-            </ActionButton>
-            <ActionButton icon={XCircle} variant="outline" onClick={onCancel}>
-              Cancel
-            </ActionButton>
-          </>
-        ) : (
-          <>
-            <ActionButton icon={Download} variant="outline" onClick={onExport}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Applications
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {application.first_name} {application.last_name}
+            </h1>
+            <p className="text-slate-600">Application Details</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {onExport && (
+            <Button
+              variant="outline"
+              onClick={onExport}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
               Export
-            </ActionButton>
-            {!CLOSED_STATUSES.includes(application.status) && (
-              <ActionButton icon={Pencil} onClick={onEdit}>
-                Edit
-              </ActionButton>
+            </Button>
+          )}
+          {!isEditing &&
+            onEdit &&
+            !CLOSED_STATUSES.includes(application.status) && (
+              <Button onClick={onEdit} className="flex items-center gap-2">
+                <Pencil className="w-4 h-4" />
+                Edit Application
+              </Button>
             )}
-          </>
-        )}
-      </PageHeader>
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+              <Button onClick={onSave}>Save Changes</Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Status Action Card */}
+      <ApplicationStatusCard
+        application={application}
+        onStatusTransition={handleStatusTransition}
+        onHireDriver={handleHireDriver}
+        statusNotes={statusNotes}
+        onStatusNotesChange={setStatusNotes}
+        hireNotes={hireNotes}
+        onHireNotesChange={setHireNotes}
+        statusError={statusError}
+        statusSuccess={statusSuccess}
+        hireError={hireError}
+        hireSuccess={hireSuccess}
+        loading={hireLoading || statusLoading}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <InfoCard

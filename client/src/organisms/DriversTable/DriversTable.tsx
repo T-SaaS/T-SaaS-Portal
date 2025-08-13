@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { TableSkeleton } from "@/components/ui/loader";
 import { DriverRow } from "@/molecules/DriverRow";
 import { Driver } from "@/types";
 

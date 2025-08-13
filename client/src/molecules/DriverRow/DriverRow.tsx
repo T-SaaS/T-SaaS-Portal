@@ -1,6 +1,6 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/atoms/Button";
-import { Badge } from "@/atoms/Badge";
+import { StatusBadge } from "@/molecules/StatusBadge";
 import { Driver } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { Eye, Edit, Download } from "lucide-react";
@@ -26,19 +26,6 @@ export function DriverRow({ driver, formatDate, onExport }: DriverRowProps) {
     onExport?.(driver.id);
   };
 
-  const getStatusColor = (status: Driver["status"]) => {
-    switch (status) {
-      case "active":
-        return "success";
-      case "out_of_duty":
-        return "warning";
-      case "no_longer_employed":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
-
   return (
     <TableRow>
       <TableCell>
@@ -59,9 +46,7 @@ export function DriverRow({ driver, formatDate, onExport }: DriverRowProps) {
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant={getStatusColor(driver.status)}>
-          {driver.status.replace("_", " ")}
-        </Badge>
+        <StatusBadge status={driver.status} />
       </TableCell>
       <TableCell>
         <div className="text-sm text-slate-600">
@@ -88,7 +73,7 @@ export function DriverRow({ driver, formatDate, onExport }: DriverRowProps) {
             variant="ghost"
             size="sm"
             onClick={handleView}
-            title="View driver details"
+            aria-label="View driver details"
           >
             <Eye className="w-4 h-4" />
           </Button>
@@ -96,7 +81,7 @@ export function DriverRow({ driver, formatDate, onExport }: DriverRowProps) {
             variant="ghost"
             size="sm"
             onClick={handleEdit}
-            title="Edit driver"
+            aria-label="Edit driver"
           >
             <Edit className="w-4 h-4" />
           </Button>
@@ -105,7 +90,7 @@ export function DriverRow({ driver, formatDate, onExport }: DriverRowProps) {
               variant="ghost"
               size="sm"
               onClick={handleExport}
-              title="Export driver data"
+              aria-label="Export driver data"
             >
               <Download className="w-4 h-4" />
             </Button>

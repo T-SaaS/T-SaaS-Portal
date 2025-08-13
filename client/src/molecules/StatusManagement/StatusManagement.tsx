@@ -124,6 +124,7 @@ export function StatusManagement({
 
   const canHire = application.status === "Approved";
   const hasTransitions = transitions?.availableTransitions?.length ?? 0 > 0;
+  const isHireSelected = selectedStatus === "Hired";
 
   return (
     <Card>
@@ -148,7 +149,7 @@ export function StatusManagement({
         {transitions && (
           <div>
             <label className="text-sm font-medium text-slate-700">
-              Available Transitions
+              Available Actions
             </label>
             <div className="mt-2 flex flex-wrap gap-2">
               {transitions.availableTransitions.length > 0 ? (
@@ -159,23 +160,27 @@ export function StatusManagement({
                 ))
               ) : (
                 <span className="text-sm text-slate-500">
-                  No available transitions
+                  No available actions
                 </span>
               )}
             </div>
           </div>
         )}
 
-        {/* Manual Status Change */}
+        {/* Dynamic Action Section */}
         {hasTransitions && (
           <div className="space-y-3">
             <div>
               <label className="text-sm font-medium text-slate-700">
-                Change Status
+                {canHire ? "Select Action" : "Change Status"}
               </label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select new status" />
+                  <SelectValue
+                    placeholder={
+                      canHire ? "Select action..." : "Select new status..."
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {transitions?.availableTransitions.map((status) => (
@@ -194,54 +199,36 @@ export function StatusManagement({
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add notes about this status change..."
+                placeholder={
+                  isHireSelected
+                    ? "Add notes about hiring this driver..."
+                    : "Add notes about this status change..."
+                }
                 rows={2}
               />
             </div>
 
             <div className="flex gap-2">
-              <Button
-                onClick={handleStatusChange}
-                disabled={!selectedStatus || loading}
-                size="sm"
-              >
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Change Status
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Hire Driver */}
-        {canHire && (
-          <div className="pt-4 border-t">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">
-                Ready to Hire
-              </span>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Hire Notes (optional)
-                </label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes about hiring this driver..."
-                  rows={2}
-                />
-              </div>
-              <Button
-                onClick={handleHireDriver}
-                disabled={loading}
-                className="bg-green-600 hover:bg-green-700"
-                size="sm"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Hire Driver
-              </Button>
+              {isHireSelected ? (
+                <Button
+                  onClick={handleHireDriver}
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Hire Driver
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStatusChange}
+                  disabled={!selectedStatus || loading}
+                  size="sm"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Change Status
+                </Button>
+              )}
             </div>
           </div>
         )}

@@ -21,7 +21,9 @@ export { SearchFilterBar } from "./SearchFilterBar";
 // Display and status components
 export { InfoCard } from "./InfoCard";
 export { StatusBadge } from "./StatusBadge";
+export { StatusCard } from "./StatusCard";
 export { StatusManagement } from "./StatusManagement";
+export { StatusNotes } from "./StatusNotes";
 
 // Form-related types
 export type { AddressFormProps } from "./AddressForm";
@@ -53,4 +55,6 @@ export type {
 // Display and status types
 export type { InfoCardProps } from "./InfoCard";
 export type { StatusBadgeProps } from "./StatusBadge";
+export type { StatusCardConfig, StatusCardProps } from "./StatusCard";
 export type { StatusManagementProps } from "./StatusManagement";
+export type { StatusNotesProps } from "./StatusNotes";

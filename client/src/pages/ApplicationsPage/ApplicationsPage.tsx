@@ -10,14 +10,7 @@ import { useDriverApplications } from "@/hooks/useDriverApplications";
 import { formatDate } from "@/utils/dateUtils";
 import { useCompanies } from "@/hooks/useCompany";
 
-// Closed statuses that should be filtered out from the applications list
-const CLOSED_STATUSES: DriverApplication["status"][] = [
-  "Not Hired",
-  "Disqualified",
-  "Rejected",
-  "Expired",
-  "Approved",
-];
+// All statuses are now shown - no filtering by default
 
 export function ApplicationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,24 +116,6 @@ export function ApplicationsPage() {
 
   // Apply filters
   const filteredApplications = applications.filter((app) => {
-    // Check if we should show closed statuses based on search/filter criteria
-    const isSearchingForClosedStatus =
-      searchTerm.toLowerCase().includes("rejected") ||
-      searchTerm.toLowerCase().includes("disqualified") ||
-      searchTerm.toLowerCase().includes("expired") ||
-      searchTerm.toLowerCase().includes("not hired") ||
-      searchTerm.toLowerCase().includes("approved") ||
-      filters.status === "Rejected" ||
-      filters.status === "Disqualified" ||
-      filters.status === "Expired" ||
-      filters.status === "Not Hired" ||
-      filters.status === "Approved";
-
-    // Filter out applications with closed statuses unless explicitly searching/filtering for them
-    if (CLOSED_STATUSES.includes(app.status) && !isSearchingForClosedStatus) {
-      return false;
-    }
-
     // Apply search term filter
     const searchMatch =
       !searchTerm ||

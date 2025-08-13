@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/atoms/Button";
-import { Badge } from "@/atoms/Badge";
+import { StatusBadge } from "@/molecules/StatusBadge";
 import { InfoField } from "@/atoms/InfoField";
 import { Driver, Company } from "@/types";
 import { ArrowLeft, Edit, Download, UserX, UserCheck } from "lucide-react";
@@ -36,19 +36,6 @@ export function DriverDetailsView({
 
   const handleBack = () => {
     navigate("/drivers");
-  };
-
-  const getStatusColor = (status: Driver["status"]) => {
-    switch (status) {
-      case "active":
-        return "default";
-      case "out_of_duty":
-        return "secondary";
-      case "no_longer_employed":
-        return "destructive";
-      default:
-        return "secondary";
-    }
   };
 
   return (
@@ -117,11 +104,7 @@ export function DriverDetailsView({
             <InfoField label="Position" value={driver.position} />
             <InfoField
               label="Status"
-              value={
-                <Badge variant={getStatusColor(driver.status)}>
-                  {driver.status.replace("_", " ")}
-                </Badge>
-              }
+              value={<StatusBadge status={driver.status} />}
             />
           </div>
         </CardContent>

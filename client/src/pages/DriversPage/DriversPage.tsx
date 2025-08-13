@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/atoms/PageHeader";
 import { ActionButton } from "@/atoms/ActionButton";
-import { SearchFilterBar } from "@/molecules/SearchFilterBar";
+import { CompanySearchFilterBar } from "@/molecules/CompanySearchFilterBar";
 import { DriversTable } from "@/organisms/DriversTable";
 import { Download } from "lucide-react";
 import { Driver } from "@/types";
@@ -19,12 +19,9 @@ const INACTIVE_STATUSES: Driver["status"][] = [
 export function DriversPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<{
-    status?: Driver["status"];
-    company_id?: string;
+    domain?: string;
     dateFrom?: string;
     dateTo?: string;
-    state?: string;
-    position?: string;
   }>({});
 
   // Fetch drivers using REST API
@@ -78,9 +75,9 @@ export function DriversPage() {
 
   const drivers: Driver[] = driversData?.map(transformDriver) || [];
 
-  // Filter drivers based on search term and filters
+  // Filter drivers based on search term
   const filteredDrivers = useMemo(() => {
-    let filtered = drivers.filter((driver) => {
+    return drivers.filter((driver) => {
       // Filter out inactive statuses by default
       if (INACTIVE_STATUSES.includes(driver.status)) {
         return false;
@@ -99,59 +96,26 @@ export function DriversPage() {
         if (!matchesSearch) return false;
       }
 
-      // Apply status filter
-      if (filters.status && driver.status !== filters.status) {
-        return false;
-      }
-
-      // Apply company filter
-      if (filters.company_id && driver.company_id !== filters.company_id) {
-        return false;
-      }
-
-      // Apply state filter
-      if (filters.state && driver.current_state !== filters.state) {
-        return false;
-      }
-
-      // Apply position filter
-      if (filters.position && driver.position !== filters.position) {
-        return false;
-      }
-
-      // Apply date range filter
-      if (filters.dateFrom || filters.dateTo) {
-        const hireDate = new Date(driver.hire_date);
-        if (filters.dateFrom) {
-          const fromDate = new Date(filters.dateFrom);
-          if (hireDate < fromDate) return false;
-        }
-        if (filters.dateTo) {
-          const toDate = new Date(filters.dateTo);
-          if (hireDate > toDate) return false;
-        }
-      }
-
       return true;
     });
-
-    return filtered;
-  }, [drivers, searchTerm, filters]);
+  }, [drivers, searchTerm]);
 
   // Get unique values for filter options
   const availableStatuses = useMemo(() => {
-    const statuses = [...new Set(drivers.map((driver) => driver.status))];
+    const statuses = Array.from(
+      new Set(drivers.map((driver) => driver.status))
+    );
     return statuses.filter((status) => !INACTIVE_STATUSES.includes(status));
   }, [drivers]);
 
   const availableStates = useMemo(() => {
-    return [...new Set(drivers.map((driver) => driver.current_state))].filter(
-      Boolean
-    );
+    return Array.from(
+      new Set(drivers.map((driver) => driver.current_state))
+    ).filter(Boolean);
   }, [drivers]);
 
   const availablePositions = useMemo(() => {
-    return [...new Set(drivers.map((driver) => driver.position))].filter(
+    return Array.from(new Set(drivers.map((driver) => driver.position))).filter(
       Boolean
     );
   }, [drivers]);
@@ -202,7 +166,7 @@ export function DriversPage() {
           Error Loading Drivers
         </h2>
         <p className="text-slate-600 mt-2">
-          {driversError?.message ||
+          {driversError ||
             companiesError?.message ||
             "Failed to load drivers"}
         </p>
@@ -216,30 +180,24 @@ export function DriversPage() {
       <PageHeader
         title="Drivers"
         description="Manage and view all active drivers"
-        actions={
-          <ActionButton
-            onClick={handleExportAll}
-            icon={Download}
-            label="Export All"
-          />
-        }
-      />
+      >
+        <ActionButton onClick={handleExportAll} icon={Download}>
+          Export All
+        </ActionButton>
+      </PageHeader>
 
       {/* Filters and Search */}
       <Card>
         <CardContent className="pt-6">
-          <SearchFilterBar
+          <CompanySearchFilterBar
             searchTerm={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             filters={filters}
             onFiltersChange={setFilters}
-            availableStatuses={availableStatuses}
-            availableCompanies={availableCompanies}
-            availableStates={availableStates}
-            availablePositions={availablePositions}
+            availableDomains={Array.from(
+              new Set(companies?.map((c) => c.domain).filter(Boolean) as string[])
+            )}
             searchPlaceholder="Search drivers by name, email, phone, license..."
-            onRemoveFilter={removeFilter}
-            onClearAllFilters={clearAllFilters}
           />
         </CardContent>
       </Card>

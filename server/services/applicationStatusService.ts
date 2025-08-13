@@ -97,6 +97,16 @@ export class ApplicationStatusService {
   }
 
   /**
+   * Check if PSP review is required for this application
+   * This can be based on company settings, position requirements, or other criteria
+   */
+  private isPSPReviewRequired(application: DriverApplication): boolean {
+    // For now, we'll make PSP review optional
+    // This can be enhanced based on company settings or position requirements
+    return false; // Default to not required
+  }
+
+  /**
    * Process status transitions based on current status and application data
    */
   async processStatusTransition(
@@ -121,7 +131,7 @@ export class ApplicationStatusService {
         switch (application.status) {
           case "New":
             if (this.isSubmissionValid(application)) {
-              newStatus = "Reviewing Application";
+              newStatus = "Under Review";
               message = "Application validated, moved to review";
             } else {
               newStatus = "On Hold";
@@ -129,24 +139,41 @@ export class ApplicationStatusService {
             }
             break;
 
-          case "Reviewing Application":
+          case "Under Review":
             if (this.areConsentsSigned(application)) {
-              newStatus = "Signed Consents";
-              message = "All consents signed, proceeding to screening";
+              newStatus = "MVR Check";
+              message =
+                "All consents signed, proceeding to Motor Vehicle Record check";
             } else {
               newStatus = "On Hold";
               message = "Consents pending, placed on hold";
             }
             break;
 
-          case "Signed Consents":
-            newStatus = "Run MVR";
-            message = "Starting MVR and background screening process";
+          case "MVR Check":
+            newStatus = "Drug Screening";
+            message = "MVR check completed, proceeding to drug screening";
             break;
 
-          case "Run MVR":
-            newStatus = "Drug Screening";
-            message = "MVR completed, proceeding to drug screening";
+          case "Drug Screening":
+            if (this.isPSPReviewRequired(application)) {
+              newStatus = "PSP Review";
+              message = "Drug screening completed, proceeding to PSP review";
+            } else {
+              newStatus = "Background Complete";
+              message =
+                "Drug screening completed, background check process finished";
+            }
+            break;
+
+          case "PSP Review":
+            newStatus = "Background Complete";
+            message = "PSP review completed, background check process finished";
+            break;
+
+          case "Background Complete":
+            newStatus = "Approved";
+            message = "All background checks completed, application approved";
             break;
 
           case "Drug Screening":
@@ -308,7 +335,7 @@ export class ApplicationStatusService {
       const driver = await db.createDriver(driverData);
 
       // Update application status to indicate it's been converted
-      await db.updateDriverApplication(applicationId, { status: "Not Hired" });
+      await db.updateDriverApplication(applicationId, { status: "Hired" });
 
       // Log the hiring process
       const loggingService = new LoggingService(context);
@@ -352,19 +379,23 @@ export class ApplicationStatusService {
     currentStatus: ApplicationStatus
   ): ApplicationStatus[] {
     const transitions: Record<ApplicationStatus, ApplicationStatus[]> = {
-      New: ["Reviewing Application", "On Hold"],
-      "Reviewing Application": ["Signed Consents", "On Hold"],
-      "On Hold": ["Reviewing Application", "Signed Consents"],
-      "Signed Consents": ["Run MVR"],
-      "Run MVR": ["Drug Screening"],
-      "Drug Screening": ["Pre-Employment", "Disqualified"],
-      "Pre-Employment": ["Hire Driver", "Rejected"],
-      "Hire Driver": ["Approved"],
-      Approved: ["Not Hired"], // When driver is hired
+      New: ["Under Review", "On Hold", "Rejected"],
+      "Under Review": ["MVR Check", "On Hold", "Rejected"],
+      "On Hold": ["Under Review", "MVR Check", "Rejected"],
+      "MVR Check": ["Drug Screening", "On Hold", "Rejected"],
+      "Drug Screening": [
+        "PSP Review",
+        "Background Complete",
+        "On Hold",
+        "Rejected",
+      ],
+      "PSP Review": ["Background Complete", "On Hold", "Rejected"],
+      "Background Complete": ["Approved", "On Hold", "Rejected"],
+      Approved: ["Hired", "Rejected"], // Can hire or reject even after approval
+      Hired: [], // Final state when driver is successfully hired
       Rejected: [],
       Disqualified: ["Rejected"],
       Expired: [],
-      "Not Hired": [],
     };
 
     return transitions[currentStatus] || [];

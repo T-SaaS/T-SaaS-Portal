@@ -11,8 +11,11 @@ export function ApplicationDetailsPage() {
   const navigate = useNavigate();
 
   // Fetch single application
-  const { application: applicationData, loading: applicationLoading } =
-    useDriverApplication(id || "");
+  const {
+    application: applicationData,
+    loading: applicationLoading,
+    refetch: refetchApplication,
+  } = useDriverApplication(id || "");
 
   // Fetch company data for the application
   const { company: companyData } = useCompany({
@@ -40,7 +43,7 @@ export function ApplicationDetailsPage() {
 
   const handleStatusChange = () => {
     // Refresh the application data when status changes
-    window.location.reload();
+    refetchApplication();
   };
 
   // Handle loading state

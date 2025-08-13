@@ -1,6 +1,7 @@
 // Application-related components
 export { ApplicationDetailsView } from "./ApplicationDetailsView";
 export { ApplicationsTable } from "./ApplicationsTable";
+export { ApplicationStatusCard } from "./ApplicationStatusCard";
 
 // Driver-related components
 export { DriverDetailsView } from "./DriverDetailsView";
@@ -11,11 +12,11 @@ export { CompaniesTable } from "./CompaniesTable";
 export { CompanyDetailsView } from "./CompanyDetailsView";
 
 // Form step components
-export { PersonalInfoStep } from "./PersonalInfoStep";
-export { ContactAddressStep } from "./ContactAddressStep";
-export { LicenseInfoStep } from "./LicenseInfoStep";
 export { AddressHistoryStep } from "./AddressHistoryStep";
+export { ContactAddressStep } from "./ContactAddressStep";
 export { EmploymentHistoryStep } from "./EmploymentHistoryStep";
+export { LicenseInfoStep } from "./LicenseInfoStep";
+export { PersonalInfoStep } from "./PersonalInfoStep";
 
 // Navigation components
 export { FormNavigation } from "./FormNavigation";
@@ -24,6 +25,7 @@ export { ProgressStepper } from "./ProgressStepper";
 // Application-related types
 export type { ApplicationDetailsViewProps } from "./ApplicationDetailsView";
 export type { ApplicationsTableProps } from "./ApplicationsTable";
+export type { ApplicationStatusCardProps } from "./ApplicationStatusCard";
 
 // Driver-related types
 export type { DriverDetailsViewProps } from "./DriverDetailsView";

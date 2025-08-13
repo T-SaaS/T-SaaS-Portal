@@ -13,11 +13,10 @@ import { DriverApplication, Company } from "@/types";
 
 // Closed statuses that prevent editing
 const CLOSED_STATUSES: DriverApplication["status"][] = [
-  "Not Hired",
+  "Hired",
   "Disqualified",
   "Rejected",
   "Expired",
-  "Approved",
 ];
 
 export interface ApplicationRowProps {
