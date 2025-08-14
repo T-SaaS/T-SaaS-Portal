@@ -58,7 +58,8 @@ export interface DriverApplication {
     | "Hired"
     | "Rejected"
     | "Disqualified"
-    | "Expired";
+    | "Expired"
+    | "draft"; // Added draft status
   dob: string;
   phone: string;
   email: string;
@@ -104,6 +105,10 @@ export interface DriverApplication {
   ip_address?: string;
   logs?: LogEntry[]; // JSONB column for storing logs
   submitted_at: string;
+  // Draft functionality fields
+  draft_token_hash?: string; // Hashed token for magic link
+  draft_token_expires_at?: string; // ISO string for token expiry
+  draft_saved_at?: string; // ISO string for when draft was last saved
 }
 
 // Driver interface for converted applications
@@ -263,9 +268,57 @@ export const insertDriverApplicationSchema = z.object({
   motor_vehicle_record_consent_signature: signatureDataSchema.optional(),
   drug_test_consent_signature: signatureDataSchema.optional(),
   general_consent_signature: signatureDataSchema.optional(),
-  // Document photo fields (no data field - stored in bucket)
+  // Document photo fields
   license_photo: documentPhotoDataSchema.optional(),
   medical_card_photo: documentPhotoDataSchema.optional(),
+});
+
+// Zod schema for saving draft (allows partial data)
+export const saveDraftSchema = z.object({
+  company_id: z.string().min(1, "Company ID is required"),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  dob: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("Valid email is required"),
+  current_address: z.string().optional(),
+  current_city: z.string().optional(),
+  current_state: z.string().optional(),
+  current_zip: z.string().optional(),
+  current_address_from_month: z.number().min(1).max(12).optional(),
+  current_address_from_year: z.number().min(1900).optional(),
+  license_number: z.string().optional(),
+  license_state: z.string().optional(),
+  license_expiration_date: z.string().optional(),
+  medical_card_expiration_date: z.string().optional(),
+  position_applied_for: z.string().optional(),
+  addresses: z.array(addressSchema).optional(),
+  jobs: z.array(jobSchema).optional(),
+  social_security_number: z.string().optional(),
+  // Consent fields
+  fair_credit_reporting_act_consent: z.boolean().optional(),
+  fmcsa_clearinghouse_consent: z.boolean().optional(),
+  motor_vehicle_record_consent: z.boolean().optional(),
+  drug_test_consent: z.boolean().optional(),
+  drug_test_question: z.string().optional(),
+  general_consent: z.boolean().optional(),
+  // Device and IP information
+  device_info: z.any().optional(),
+  ip_address: z.string().optional(),
+  // Signature fields
+  fair_credit_reporting_act_consent_signature: signatureDataSchema.optional(),
+  fmcsa_clearinghouse_consent_signature: signatureDataSchema.optional(),
+  motor_vehicle_record_consent_signature: signatureDataSchema.optional(),
+  drug_test_consent_signature: signatureDataSchema.optional(),
+  general_consent_signature: signatureDataSchema.optional(),
+  // Document photo fields
+  license_photo: documentPhotoDataSchema.optional(),
+  medical_card_photo: documentPhotoDataSchema.optional(),
+});
+
+// Zod schema for resume draft request
+export const resumeDraftSchema = z.object({
+  token: z.string().min(1, "Token is required"),
 });
 
 // Zod schema for creating a new driver from an application

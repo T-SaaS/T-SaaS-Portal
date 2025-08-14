@@ -195,6 +195,22 @@ process.on("uncaughtException", (error) => {
 
 process.on("unhandledRejection", (reason, promise) => {
   log(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+
+  // Log additional details for debugging
+  if (reason instanceof Error) {
+    log(`Error name: ${reason.name}`);
+    log(`Error message: ${reason.message}`);
+    log(`Error stack: ${reason.stack}`);
+  }
+
+  // Check if it's related to ZeptoMail
+  if (reason && typeof reason === "object" && "message" in reason) {
+    const message = (reason as any).message;
+    if (typeof message === "string" && message.includes("json")) {
+      log("This appears to be a JSON parsing error, possibly from ZeptoMail");
+    }
+  }
+
   // Don't exit immediately, let the server try to continue
 });
 

@@ -38,7 +38,7 @@ services:
         sync: false
       - key: DEFAULT_FROM_EMAIL
         sync: false
-      - key: ZEPTOMAIL_API_TOKEN
+      - key: ZEPTOMAIL_API_KEY
         sync: false
       - key: ZEPTOMAIL_API_URL
         value: api.zeptomail.com/
@@ -62,7 +62,7 @@ envVarGroups:
     envVars:
       - key: DEFAULT_FROM_EMAIL
         sync: false
-      - key: ZEPTOMAIL_API_TOKEN
+      - key: ZEPTOMAIL_API_KEY
         sync: false
       - key: ZEPTOMAIL_API_URL
         value: api.zeptomail.com/

@@ -9,6 +9,7 @@ export interface FormNavigationProps {
   onPrevious: () => void;
   onNext: () => void;
   onSaveDraft?: () => void;
+  isSavingDraft?: boolean;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function FormNavigation({
   onPrevious,
   onNext,
   onSaveDraft,
+  isSavingDraft = false,
   className,
 }: FormNavigationProps) {
   return (
@@ -44,9 +46,10 @@ export function FormNavigation({
             type="button"
             variant="ghost"
             onClick={onSaveDraft}
+            disabled={isSavingDraft}
             className="text-slate-500 hover:text-slate-700 w-full sm:w-auto text-sm"
           >
-            Save Draft
+            {isSavingDraft ? "Saving..." : "Save Draft"}
           </Button>
         )}
 

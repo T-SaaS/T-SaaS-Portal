@@ -3,6 +3,8 @@ import { expressMiddleware } from "@apollo/server/express4";
 import {
   createDriverSchema,
   insertDriverApplicationSchema,
+  resumeDraftSchema,
+  saveDraftSchema,
   updateDriverSchema,
 } from "@shared/schema";
 import dotenv from "dotenv";
@@ -13,6 +15,7 @@ import { z } from "zod";
 import { db, supabase } from "./db";
 import { resolvers, typeDefs } from "./graphql/schema";
 import { ApplicationStatusService } from "./services/applicationStatusService";
+import { DraftService } from "./services/draftService";
 import { emailService, EmailTemplateType } from "./services/emailService";
 import { LoggingService } from "./services/loggingService";
 import { getSignaturesForEditing } from "./utils/signatureUtils";
@@ -224,6 +227,156 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             success: false,
             message: "Internal server error",
             error: "UNKNOWN_ERROR",
+          });
+        }
+      }
+    }
+  );
+
+  // Save draft application (rate limited)
+  app.post(
+    "/api/v1/driver-applications/draft",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        // Capture IP address
+        const ipAddress =
+          req.ip ||
+          req.connection.remoteAddress ||
+          req.socket.remoteAddress ||
+          req.headers["x-forwarded-for"]?.toString().split(",")[0] ||
+          req.headers["x-real-ip"]?.toString() ||
+          "unknown";
+
+        console.log("Draft save request:", {
+          hasEmail: !!req.body.email,
+          ipAddress,
+        });
+
+        // Validate draft data
+        const validatedData = saveDraftSchema.parse(req.body);
+
+        const companyData = await db.getCompanyById(validatedData.company_id);
+
+        // Save draft using DraftService
+        const result = await DraftService.saveDraft(
+          validatedData,
+          companyData,
+          ipAddress
+        );
+
+        if (result.success) {
+          console.log("Draft saved successfully:", {
+            email: validatedData.email,
+            ipAddress,
+          });
+
+          res.json({
+            success: true,
+            message:
+              "Draft saved successfully. Check your email for the resume link.",
+            data: {
+              email: validatedData.email,
+              savedAt: new Date().toISOString(),
+            },
+          });
+        } else {
+          console.error("Failed to save draft:", result.error);
+          res.status(500).json({
+            success: false,
+            message: "Failed to save draft",
+            error: result.error,
+          });
+        }
+      } catch (error) {
+        console.error("Error in POST /api/v1/driver-applications/draft:", {
+          error: error instanceof Error ? error.message : JSON.stringify(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          body: req.body,
+          timestamp: new Date().toISOString(),
+        });
+
+        if (error instanceof z.ZodError) {
+          res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error.errors.map((err) => ({
+              field: err.path.join("."),
+              message: err.message,
+              code: err.code,
+            })),
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+    }
+  );
+
+  // Resume draft application
+  app.post(
+    "/api/v1/driver-applications/draft/resume",
+    conditionalRateLimit(apiLimiter),
+    async (req, res) => {
+      try {
+        console.log("Draft resume request");
+
+        // Validate token
+        const validatedData = resumeDraftSchema.parse(req.body);
+
+        // Resume draft using DraftService
+        const result = await DraftService.resumeDraft(validatedData.token);
+
+        if (result.success && result.data) {
+          console.log("Draft resumed successfully:", {
+            applicationId: result.data.id,
+            email: result.data.email,
+          });
+
+          res.json({
+            success: true,
+            message: "Draft resumed successfully",
+            data: result.data,
+          });
+        } else {
+          console.error("Failed to resume draft:", result.error);
+          res.status(400).json({
+            success: false,
+            message: "Invalid or expired draft token",
+            error: result.error,
+          });
+        }
+      } catch (error) {
+        console.error(
+          "Error in POST /api/v1/driver-applications/draft/resume:",
+          {
+            error:
+              error instanceof Error ? error.message : JSON.stringify(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            body: req.body,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        if (error instanceof z.ZodError) {
+          res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error.errors.map((err) => ({
+              field: err.path.join("."),
+              message: err.message,
+              code: err.code,
+            })),
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error instanceof Error ? error.message : "Unknown error",
           });
         }
       }

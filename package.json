@@ -13,8 +13,7 @@
     "build:prod": "NODE_ENV=production npm run build",
     "preview": "vite preview",
     "start:server": "node dist/server/index.js",
-    "start": "node dist/server/index.js",
-    "check": "tsc"
+    "start": "node dist/server/index.js"
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",

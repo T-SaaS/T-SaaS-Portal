@@ -380,22 +380,18 @@ export class ApplicationStatusService {
   ): ApplicationStatus[] {
     const transitions: Record<ApplicationStatus, ApplicationStatus[]> = {
       New: ["Under Review", "On Hold", "Rejected"],
-      "Under Review": ["MVR Check", "On Hold", "Rejected"],
+      "Under Review": ["On Hold", "MVR Check", "Rejected"],
       "On Hold": ["Under Review", "MVR Check", "Rejected"],
-      "MVR Check": ["Drug Screening", "On Hold", "Rejected"],
-      "Drug Screening": [
-        "PSP Review",
-        "Background Complete",
-        "On Hold",
-        "Rejected",
-      ],
-      "PSP Review": ["Background Complete", "On Hold", "Rejected"],
-      "Background Complete": ["Approved", "On Hold", "Rejected"],
-      Approved: ["Hired", "Rejected"], // Can hire or reject even after approval
-      Hired: [], // Final state when driver is successfully hired
-      Rejected: [],
-      Disqualified: ["Rejected"],
+      "MVR Check": ["On Hold", "Drug Screening", "Rejected"],
+      "Drug Screening": ["On Hold", "PSP Review", "Rejected"],
+      "PSP Review": ["On Hold", "Background Complete", "Rejected"],
+      "Background Complete": ["On Hold", "Approved", "Rejected"],
+      Approved: ["On Hold", "Hired", "Rejected"],
+      Hired: ["On Hold", "Rejected"],
+      Rejected: ["Under Review", "On Hold"],
+      Disqualified: ["On Hold"],
       Expired: [],
+      draft: ["New", "Under Review", "Rejected"], // Draft can be submitted or rejected
     };
 
     return transitions[currentStatus] || [];

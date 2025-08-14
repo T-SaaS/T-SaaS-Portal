@@ -9,7 +9,7 @@ export const testDriverData: DriverFormValues = {
 
   // Step 2: Contact & Address
   phone: "(555) 123-4567",
-  email: "john.smith@email.com",
+  email: "jherson@trucking.mba",
   currentAddress: "123 Main Street",
   currentCity: "San Francisco",
   currentState: "CA",
@@ -103,7 +103,7 @@ export const testDriverDataMinimal: DriverFormValues = {
 
   // Step 2: Contact & Address
   phone: "(555) 987-6543",
-  email: "jane.doe@email.com",
+ email: "jherson@trucking.mba",
   currentAddress: "321 Elm Street",
   currentCity: "New York",
   currentState: "NY",
@@ -160,7 +160,7 @@ export const testDriverDataWithGaps: DriverFormValues = {
 
   // Step 2: Contact & Address
   phone: "(555) 456-7890",
-  email: "bob.johnson@email.com",
+  email: "jherson@trucking.mba",
   currentAddress: "654 Maple Drive",
   currentCity: "Chicago",
   currentState: "IL",

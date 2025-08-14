@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useDriverApplicationForm } from "@/hooks/useDriverApplicationForm";
 import { useFormSteps } from "@/hooks/useFormSteps";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { useGapDetection } from "@/hooks/useGapDetection";
+import { useDraft } from "@/hooks/useDraft";
 import { loadTestData } from "@/utils/testData";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyContext } from "@/contexts/CompanyContext";
@@ -29,6 +30,9 @@ export function DriverFormPage() {
     []
   );
   const [residencyPeriods, setResidencyPeriods] = useState<GapPeriod[]>([]);
+
+  // Ref to track if draft has been loaded to prevent infinite loops
+  const draftLoadedRef = useRef(false);
 
   const companyName = company?.name;
 
@@ -52,12 +56,64 @@ export function DriverFormPage() {
   const { checkResidencyRequirements, checkForEmploymentGaps } =
     useGapDetection();
 
+  // Draft functionality
+  const {
+    saveDraft,
+    resumeDraft,
+    isSavingDraft,
+    isResumingDraft,
+    resumeToken,
+    convertDraftToFormValues,
+    draftData,
+  } = useDraft();
+
   const driverName = `${form.watch("firstName")} ${form.watch("lastName")}`;
 
   // Function to scroll to top of page
   const scrollToTop = () => {
     window.scrollTo({ top: 300, behavior: "smooth" });
   };
+
+  // Handle draft resume from URL token
+  useEffect(() => {
+    if (resumeToken && !isResumingDraft && !draftData) {
+      // Reset the draft loaded flag when starting a new resume
+      draftLoadedRef.current = false;
+      resumeDraft(resumeToken);
+    }
+  }, [resumeToken, isResumingDraft, draftData, resumeDraft]);
+
+  // Load draft data into form when available
+  useEffect(() => {
+    if (draftData && !draftLoadedRef.current) {
+      const formValues = convertDraftToFormValues(draftData);
+
+      // Reset form with draft data
+      Object.entries(formValues).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          form.setValue(key as any, value);
+        }
+      });
+
+      // Reset steps to beginning
+      resetSteps();
+
+      // Mark draft as loaded to prevent infinite loops
+      draftLoadedRef.current = true;
+
+      toast({
+        title: "Draft Loaded",
+        description: "Your saved draft has been loaded successfully.",
+      });
+    }
+  }, [draftData, convertDraftToFormValues, form, resetSteps, toast]);
+
+  // Cleanup effect to reset draft loaded flag on unmount
+  useEffect(() => {
+    return () => {
+      draftLoadedRef.current = false;
+    };
+  }, []);
 
   // Scroll to top when step changes
   useEffect(() => {
@@ -70,11 +126,8 @@ export function DriverFormPage() {
   }, [currentStep]);
 
   const onNext = async () => {
-    console.log("Current step:", currentStep);
-    console.log("Form values:", form.getValues());
 
     const valid = await validateCurrentStep();
-    console.log("Validation result:", valid);
 
     if (valid) {
       if (currentStep === 1) {
@@ -151,6 +204,21 @@ export function DriverFormPage() {
     });
   };
 
+  const handleSaveDraft = () => {
+    const formValues = form.getValues();
+
+    // Only save if we have at least an email
+    if (!formValues.email) {
+      toast({
+        title: "Cannot Save Draft",
+        description: "Please provide an email address to save your draft.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveDraft(formValues);
+  };
+
   const handleResidencyGapDetectionChange = (
     gapDetected: boolean,
     periods: GapPeriod[]
@@ -222,6 +290,22 @@ export function DriverFormPage() {
     }
   };
 
+  // Show loading state while resuming draft
+  if (isResumingDraft) {
+    return (
+      <DriverFormTemplate currentStep={currentStep}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-lg text-slate-600">
+              Loading your saved draft...
+            </p>
+          </div>
+        </div>
+      </DriverFormTemplate>
+    );
+  }
+
   return (
     <DriverFormTemplate currentStep={currentStep}>
       <Form {...form}>
@@ -273,13 +357,8 @@ export function DriverFormPage() {
             gapDetected={currentStep === 4 && gapDetected}
             onPrevious={onBack}
             onNext={onNext}
-            onSaveDraft={() => {
-              // TODO: Implement save draft functionality
-              toast({
-                title: "Draft Saved",
-                description: "Your progress has been saved as a draft.",
-              });
-            }}
+            onSaveDraft={handleSaveDraft}
+            isSavingDraft={isSavingDraft}
           />
         </form>
       </Form>

@@ -1,7 +1,7 @@
 declare module "zeptomail" {
   export interface ZeptoMailConfig {
-    apiKey: string;
-    apiUrl?: string;
+    token: string;
+    url: string;
   }
 
   export interface EmailAddress {

@@ -52,19 +52,44 @@ export enum EmailTemplateType {
 }
 
 export class EmailService {
-  private zeptoMail: SendMailClient;
+  private zeptoMail: SendMailClient | null;
   private defaultFrom: string;
   private companyName: string;
 
   constructor() {
     // Initialize ZeptoMail with environment variables
-    this.zeptoMail = new SendMailClient({
-      apiKey: process.env.ZEPTOMAIL_API_TOKEN || "",
-      apiUrl: process.env.ZEPTOMAIL_API_URL || "api.zeptomail.com/",
-    });
+    const token = process.env.ZEPTOMAIL_API_KEY || "";
+    const url = process.env.ZEPTOMAIL_API_URL || "api.zeptomail.com/";
+
+    console.log("EmailService initialization:");
+
+    // Only initialize ZeptoMail if we have the required token
+    if (token) {
+      try {
+       
+        this.zeptoMail = new SendMailClient({ url,token });
+        console.log("ZeptoMail client initialized successfully");
+      } catch (error) {
+        console.error("Failed to initialize ZeptoMail client:", error);
+        console.error("Initialization error details:", {
+          name: error instanceof Error ? error.name : "Unknown",
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : "No stack trace",
+        });
+        this.zeptoMail = null;
+      }
+    } else {
+      console.warn(
+        "ZEPTOMAIL_API_KEY not set - email functionality will be disabled"
+      );
+      this.zeptoMail = null;
+    }
 
     this.defaultFrom = process.env.DEFAULT_FROM_EMAIL || "noreply@trucking.mba";
     this.companyName = process.env.COMPANY_NAME || "TruckingMBA";
+
+    console.log("Default from email:", this.defaultFrom);
+    console.log("Company name:", this.companyName);
   }
 
   /**
@@ -88,7 +113,7 @@ export class EmailService {
         html: template.html,
         text: template.text,
       };
-
+      
       return await this.sendEmail(emailData);
     } catch (error) {
       console.error(`Failed to send ${templateType} email:`, error);
@@ -108,27 +133,81 @@ export class EmailService {
    */
   private async sendEmail(emailData: EmailData): Promise<boolean> {
     try {
-      const response = await this.zeptoMail.sendMail({
-        from: {
-          address: emailData.from,
-          name: this.companyName,
-        },
-        to: [
-          {
-            email_address: {
-              address: emailData.to,
-            },
-          },
-        ],
-        subject: emailData.subject,
-        htmlbody: emailData.html,
-        textbody: emailData.text,
-      });
+      console.log("Attempting to send email to:", emailData.to);
+      console.log("From:", emailData.from);
+      console.log("Subject:", emailData.subject);
 
-      console.log("Email sent successfully:", response);
-      return true;
+      // Check if ZeptoMail client is properly initialized
+      if (!this.zeptoMail) {
+        console.error("ZeptoMail client not initialized");
+        return false;
+      }
+
+      // Wrap the ZeptoMail call in a try-catch to handle any response parsing issues
+      let response;
+      try {
+        console.log("Sending email to:", emailData.to);
+
+        // Use Promise.resolve to ensure we're handling the promise correctly
+        response = await Promise.resolve(
+          this.zeptoMail.sendMail({
+            from: {
+              address: emailData.from,
+              name: this.companyName,
+            },
+            to: [
+              {
+                email_address: {
+                  address: emailData.to,
+                },
+              },
+            ],
+            subject: emailData.subject,
+            htmlbody: emailData.html,
+          })
+        );
+
+        console.log("Email sent successfully:", response);
+        return true;
+      } catch (zeptoError) {
+        console.error("ZeptoMail API error:", zeptoError);
+
+        // Check if the error has a response property that might be causing the .json() issue
+        if (
+          zeptoError &&
+          typeof zeptoError === "object" &&
+          "response" in zeptoError
+        ) {
+          const responseError = (zeptoError as any).response;
+          console.error("Response error object:", responseError);
+
+          // Don't try to call .json() on the response, just log the error
+          if (responseError && typeof responseError === "object") {
+            console.error("Response error details:", {
+              status: responseError.status,
+              statusText: responseError.statusText,
+              url: responseError.url,
+              type: responseError.type,
+            });
+          }
+        }
+
+        // Return false instead of throwing to prevent unhandled rejections
+        return false;
+      }
     } catch (error) {
       console.error("Failed to send email:", error);
+      console.error("Error details:", {
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : "No stack trace",
+      });
+
+      // Log additional error information
+      if (error && typeof error === "object") {
+        console.error("Full error object:", JSON.stringify(error, null, 2));
+      }
+
       return false;
     }
   }

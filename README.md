@@ -5,6 +5,7 @@ A comprehensive full-stack application for managing driver qualification applica
 ## 🚀 Features
 
 - **Multi-step Driver Application Form** - Comprehensive form with real-time validation and gap detection
+- **Draft Saving & Resume** - Save progress and resume applications later with secure magic links
 - **Address & Employment History Tracking** - Automatic gap detection and validation with visual warnings
 - **Background Check Integration** - Automated background verification services with status tracking
 - **Admin Dashboard** - Complete application management interface with filtering and search
@@ -163,7 +164,10 @@ DriverQualificationTool/
    PORT=5000
    SESSION_SECRET=your_session_secret
    ZEPTOMAIL_API_KEY=your_zeptomail_api_key
-   ZEPTOMAIL_FROM_EMAIL=your_verified_email
+   ZEPTOMAIL_API_URL=api.zeptomail.com/
+   DEFAULT_FROM_EMAIL=your_verified_email
+   COMPANY_NAME=Your Company Name
+   FRONTEND_URL=http://localhost:5000
    ```
 
 5. **Start development servers**
@@ -213,12 +217,22 @@ In development mode, a test user button is available on the login page with:
 
 The application uses the following main tables:
 
-- `driver_applications` - Main application data
+- `driver_applications` - Main application data with draft functionality
 - `address_history` - Driver address history with gap detection
 - `employment_history` - Driver employment history with overlap detection
 - `background_checks` - Background check results and status
 - `users` - User accounts (managed by Supabase Auth)
 - `companies` - Company information and settings
+
+### Draft Functionality
+
+The application includes secure draft saving with:
+
+- **Token-based access** - Cryptographically secure random tokens
+- **Hashed storage** - Tokens stored as SHA-256 hashes for security
+- **Automatic expiry** - Drafts expire after 7 days
+- **Email notifications** - Magic links sent via email with company branding
+- **No login required** - Drivers can resume without creating accounts
 
 ## 🎨 UI Components
 
@@ -239,7 +253,7 @@ The frontend follows Atomic Design principles:
 - **Address history tracking** with automatic gap detection
 - **Employment history tracking** with overlap detection
 - **File upload** for documents with drag-and-drop
-- **Auto-save** functionality with form persistence
+- **Draft saving** with secure magic links for resuming later
 - **Photo capture** for license and medical card photos
 - **Digital signatures** with edit capabilities
 
@@ -277,6 +291,7 @@ The application includes a comprehensive email notification system:
   - Document requests
   - Welcome emails
   - Reminder notifications
+  - **Draft resume links** with personalized company branding
 
 ## 📱 Responsive Design
 
@@ -369,6 +384,7 @@ For support and questions:
 
 ### Recent Changes
 
+- ✅ **Draft Saving & Resume** - Secure draft functionality with magic links and email notifications
 - ✅ **Email System** - Complete email notification system with ZeptoMail
 - ✅ **Document Management** - Secure file upload and storage system
 - ✅ **Signature Pad** - Digital signature collection with edit capabilities
@@ -384,6 +400,7 @@ For support and questions:
 - **Core Features**: ✅ Complete
 - **Authentication**: ✅ Complete
 - **Form System**: ✅ Complete
+- **Draft Functionality**: ✅ Complete
 - **Admin Dashboard**: ✅ Complete
 - **Email Notifications**: ✅ Complete
 - **Document Management**: ✅ Complete

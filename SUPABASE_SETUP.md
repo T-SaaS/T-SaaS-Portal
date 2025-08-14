@@ -13,6 +13,13 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
+# Email Service Configuration (Required for draft functionality)
+ZEPTOMAIL_API_KEY=your_zeptomail_api_key_here
+ZEPTOMAIL_API_URL=api.zeptomail.com/
+DEFAULT_FROM_EMAIL=your_verified_email@domain.com
+COMPANY_NAME=Your Company Name
+FRONTEND_URL=http://localhost:5173
+
 # Node Environment
 NODE_ENV=development
 ```
@@ -34,21 +41,67 @@ After setting up your environment variables, run the following command to create
 npm run db:push
 ```
 
-This will create the `driver_applications` table with all the necessary columns based on your schema.
+This will create the `driver_applications` table with all the necessary columns based on your schema, including the new draft functionality fields:
+
+- `draft_token_hash` - SHA-256 hash of the draft access token
+- `draft_token_expires_at` - Expiration timestamp for the draft token
+- `draft_saved_at` - Timestamp when the draft was last saved
+- `ip_address` - IP address of the user who saved the draft
 
 ## Installation
 
-Install the new dependencies:
+Install the dependencies:
 
 ```bash
 npm install
 ```
+
+## Email Service Setup (Required for Draft Functionality)
+
+The application uses ZeptoMail for sending draft resume links. To set up:
+
+1. **Create a ZeptoMail account** at [zeptomail.com](https://zeptomail.com)
+2. **Get your API key** from the ZeptoMail dashboard
+3. **Verify your sender email** in ZeptoMail settings
+4. **Update your `.env` file** with the required email variables
+
+### Required Email Environment Variables
+
+- `ZEPTOMAIL_API_KEY` - Your ZeptoMail API key
+- `ZEPTOMAIL_API_URL` - ZeptoMail API endpoint (usually `api.zeptomail.com/`)
+- `DEFAULT_FROM_EMAIL` - Your verified sender email address
+- `COMPANY_NAME` - Your company name for email branding
+- `FRONTEND_URL` - Your frontend URL for magic links
 
 ## Running the Application
 
 ```bash
 npm run dev
 ```
+
+## Draft Functionality
+
+The application includes secure draft saving and resuming functionality:
+
+### How It Works
+
+1. **Save Draft**: Drivers can save their progress at any time during the application process
+2. **Magic Link Generation**: A secure, cryptographically random token is generated
+3. **Email Notification**: A personalized email with a magic link is sent to the driver
+4. **Resume Application**: Drivers can click the link to resume their application without logging in
+5. **Automatic Expiry**: Drafts expire after 7 days for security
+
+### Security Features
+
+- **Token Hashing**: Raw tokens are never stored - only SHA-256 hashes
+- **Cryptographic Security**: 64-character random tokens using Node.js crypto
+- **Time-based Expiry**: Automatic cleanup of expired drafts
+- **IP Tracking**: IP addresses are logged for security monitoring
+
+### API Endpoints
+
+- `POST /api/v1/driver-applications/draft` - Save or update a draft
+- `GET /api/v1/driver-applications/draft/resume?token=<token>` - Resume a draft
 
 ## GraphQL API
 
@@ -206,3 +259,6 @@ const handleSubmit = async (formData) => {
 - Make sure to add `.env` to your `.gitignore` file to keep your keys secure
 - Both REST API and GraphQL API are available - you can use either or both
 - GraphiQL interface is enabled for development and testing
+- **Email Service**: ZeptoMail API key must be valid and sender email must be verified
+- **Draft Security**: Draft tokens are cryptographically secure and automatically expire
+- **Rate Limiting**: API endpoints include rate limiting to prevent abuse
