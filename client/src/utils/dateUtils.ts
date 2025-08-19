@@ -42,3 +42,21 @@ export const formatTimeOnly = (dateString: string) => {
     hour12: true,
   });
 };
+
+/**
+ * Calculates age from date of birth
+ * @param birthDate - The date of birth string
+ * @returns Age in years
+ */
+export const calculateAge = (birthDate: string): number => {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age;
+};

@@ -30,14 +30,6 @@ export function LicenseInfoStep({ control, className }: LicenseInfoStepProps) {
   });
 
   const {
-    field: positionField,
-    fieldState: { error: positionError },
-  } = useController({
-    name: "positionAppliedFor",
-    control,
-  });
-
-  const {
     field: expirationDateField,
     fieldState: { error: expirationDateError },
   } = useController({
@@ -178,30 +170,6 @@ export function LicenseInfoStep({ control, className }: LicenseInfoStepProps) {
             <p className="text-sm text-red-500 mt-1">
               {medicalCardExpirationError.message}
             </p>
-          )}
-        </div>
-
-        <div className="md:col-span-2 space-y-2">
-          <Label>
-            <RequiredLabel required>Position Applied For</RequiredLabel>
-          </Label>
-          <Select
-            onValueChange={positionField.onChange}
-            value={positionField.value}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Position" />
-            </SelectTrigger>
-            <SelectContent>
-              {positions.map((position) => (
-                <SelectItem key={position.value} value={position.value}>
-                  {position.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {positionError && (
-            <p className="text-sm text-red-500 mt-1">{positionError.message}</p>
           )}
         </div>
       </div>

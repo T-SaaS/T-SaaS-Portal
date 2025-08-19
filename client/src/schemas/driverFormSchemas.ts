@@ -1,3 +1,4 @@
+import { calculateAge } from "@/utils/dateUtils";
 import * as Yup from "yup";
 
 export const stepSchemas = [
@@ -5,10 +6,16 @@ export const stepSchemas = [
   Yup.object().shape({
     firstName: Yup.string().required("First Name is required"),
     lastName: Yup.string().required("Last Name is required"),
-    dob: Yup.string().required("Date of Birth is required"),
+    dob: Yup.string()
+      .required("Date of Birth is required")
+      .test("age", "You must be at least 18 years old", function (value) {
+        if (!value) return false;
+        return calculateAge(value) >= 18;
+      }),
     socialSecurityNumber: Yup.string()
       .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
       .required("Social Security Number is required"),
+    positionAppliedFor: Yup.string().required("Position is required"),
   }),
 
   // Step 2: Contact & Address
@@ -61,7 +68,6 @@ export const stepSchemas = [
           return expirationDate >= today;
         }
       ),
-    positionAppliedFor: Yup.string().required("Position is required"),
     licensePhoto: Yup.string()
       .required("Driver's License photo is required")
       .test("valid-image", "Please provide a valid image", function (value) {
@@ -214,10 +220,27 @@ export const completeFormSchema = Yup.object().shape({
   // Step 1: Personal Information
   firstName: Yup.string().required("First Name is required"),
   lastName: Yup.string().required("Last Name is required"),
-  dob: Yup.string().required("Date of Birth is required"),
+  dob: Yup.string()
+    .required("Date of Birth is required")
+    .test("age", "You must be at least 18 years old", function (value) {
+      if (!value) return false;
+      const birthDate = new Date(value);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        return age - 1 >= 18;
+      }
+      return age >= 18;
+    }),
   socialSecurityNumber: Yup.string()
     .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
     .required("Social Security Number is required"),
+  positionAppliedFor: Yup.string().required("Position is required"),
 
   // Step 2: Contact & Address
   phone: Yup.string().required("Phone number is required"),
@@ -262,7 +285,6 @@ export const completeFormSchema = Yup.object().shape({
       today.setHours(0, 0, 0, 0); // Reset time to start of day
       return expirationDate >= today;
     }),
-  positionAppliedFor: Yup.string().required("Position is required"),
   licensePhoto: Yup.string()
     .nullable()
     .test("valid-image", "Please provide a valid image", function (value) {
