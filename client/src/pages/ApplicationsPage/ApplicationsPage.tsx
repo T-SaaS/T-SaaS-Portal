@@ -9,6 +9,10 @@ import { DriverApplication } from "@/types";
 import { useDriverApplications } from "@/hooks/useDriverApplications";
 import { formatDate } from "@/utils/dateUtils";
 import { useCompanies } from "@/hooks/useCompany";
+import {
+  exportApplicationsToCSV,
+  exportSingleApplicationToCSV,
+} from "@/utils/csvExport";
 
 // All statuses are now shown - no filtering by default
 
@@ -176,13 +180,23 @@ export function ApplicationsPage() {
   });
 
   const handleExport = (id: string) => {
-    console.log("Export application:", id);
-    // Add your export logic here
+    const application = applications.find((app) => app.id === id);
+    if (application) {
+      exportSingleApplicationToCSV(
+        application,
+        companies || [],
+        application.first_name + " _" + application.last_name
+      );
+    }
   };
 
   const handleExportAll = () => {
-    console.log("Export all applications");
-    // Add your export all logic here
+    if (filteredApplications.length > 0) {
+      const filename = `driver_applications_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      exportApplicationsToCSV(filteredApplications, companies || [], filename);
+    }
   };
 
   const removeFilter = (key: keyof typeof filters) => {
