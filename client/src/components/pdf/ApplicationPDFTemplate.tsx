@@ -198,6 +198,68 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "bold",
   },
+  certificatePage: {
+    padding: 40,
+    backgroundColor: "#ffffff",
+  },
+  certificateTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#2f6fb6",
+    marginBottom: 30,
+    textDecoration: "underline",
+  },
+  certificateSection: {
+    marginBottom: 25,
+    border: "2 solid #2f6fb6",
+    borderRadius: 8,
+    padding: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  certificateInfoRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+    borderBottom: "1 solid #e0e0e0",
+    paddingBottom: 8,
+  },
+  certificateLabel: {
+    width: "35%",
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#2f6fb6",
+  },
+  certificateValue: {
+    width: "65%",
+    fontSize: 12,
+    color: "#333",
+  },
+  certificateSignatureSection: {
+    marginTop: 30,
+    borderTop: "2 solid #2f6fb6",
+    paddingTop: 20,
+  },
+  certificateSignatureRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 15,
+  },
+  certificateSignatureLeft: {
+    flex: 1,
+    marginRight: 20,
+  },
+  certificateSignatureRight: {
+    flex: 1,
+    alignItems: "center",
+  },
+  certificateSignatureImage: {
+    width: "100%",
+    maxWidth: 250,
+    height: "auto",
+    border: "2 solid #2f6fb6",
+    borderRadius: 4,
+  },
 });
 
 interface ApplicationPDFTemplateProps {
@@ -598,9 +660,8 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
           <View style={styles.consentSection}>
             <View style={styles.consentHeader}>
               <Text style={styles.consentTitle}>
-                General Application Consent:
+                General Application Consent
               </Text>
-              <Text style={styles.consentCheckbox}>☑ I consent to</Text>
             </View>
             <Text style={styles.consentText}>
               {CONSENT_TEXTS.generalApplication(
@@ -646,6 +707,86 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
           <Text style={styles.footerText}>
             Driver Application - {company.name}
           </Text>
+        </View>
+
+        {/* Page Number */}
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+          fixed
+        />
+      </Page>
+      <Page size="A4" style={styles.certificatePage}>
+        <Text style={styles.certificateTitle}>Certificate of Completion</Text>
+        <View style={styles.certificateSection}>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Document ID:</Text>
+            <Text style={styles.certificateValue}>
+              {application.id || "N/A"}
+            </Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Document Name:</Text>
+            <Text style={styles.certificateValue}>Driver Application Form</Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Organization Name:</Text>
+            <Text style={styles.certificateValue}>{company.name}</Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Completed On:</Text>
+            <Text style={styles.certificateValue}>
+              {formatDate(application.submitted_at)}
+            </Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Signer Name:</Text>
+            <Text style={styles.certificateValue}>
+              {application.first_name} {application.last_name}
+            </Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Signer Email:</Text>
+            <Text style={styles.certificateValue}>{application.email}</Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Accessed From IP:</Text>
+            <Text style={styles.certificateValue}>
+              {application.ip_address || "N/A"}
+            </Text>
+          </View>
+          <View style={styles.certificateInfoRow}>
+            <Text style={styles.certificateLabel}>Device Used:</Text>
+            <Text style={styles.certificateValue}>
+              {`${application.device_info?.os} | ${application.device_info?.browser} | ${application.device_info?.deviceType} | ${application.device_info?.timezone}`}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.certificateSignatureSection}>
+          <Text style={styles.signatureLabel}>Signature:</Text>
+          <View style={styles.certificateSignatureRow}>
+            <View style={styles.certificateSignatureLeft}>
+              <Text style={styles.signedDateLabel}>Signed On Date:</Text>
+              <Text style={styles.signedDateValue}>
+                {application.general_consent_signature?.timestamp &&
+                  formatDate(application.general_consent_signature.timestamp)}
+              </Text>
+              <Text style={styles.fullNameLabel}>Full Name:</Text>
+              <Text style={styles.fullNameValue}>
+                {application.first_name} {application.last_name}
+              </Text>
+            </View>
+            <View style={styles.certificateSignatureRight}>
+              {application.general_consent_signature?.url && (
+                <Image
+                  style={styles.certificateSignatureImage}
+                  src={application.general_consent_signature.url}
+                />
+              )}
+            </View>
+          </View>
         </View>
 
         {/* Page Number */}
