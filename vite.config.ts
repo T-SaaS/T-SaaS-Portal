@@ -14,6 +14,12 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  define: {
+    global: "globalThis",
+  },
+  optimizeDeps: {
+    include: ["@react-pdf/renderer"],
+  },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist", "public"),
@@ -29,7 +35,6 @@ export default defineConfig({
           ],
         },
       },
-      external: ["@react-pdf/renderer"],
     },
   },
   server: {
