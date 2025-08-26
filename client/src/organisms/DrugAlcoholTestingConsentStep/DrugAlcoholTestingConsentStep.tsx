@@ -3,6 +3,7 @@ import { EmpAlcoholDrugStatemetSignatureConsent } from "@/components/EmpAlcoholD
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { CONSENT_TEXTS } from "@/utils/consentTexts";
 
 interface DrugAlcoholTestingConsentStepProps {
   companyName?: string;
@@ -26,7 +27,7 @@ export const DrugAlcoholTestingConsentStep: React.FC<
       <EmpAlcoholDrugStatemetSignatureConsent
         title="Pre-Employment Employee Alcohol & Drug Test Statement"
         description="49 CFR Part 40.25(j) states, as the employer, you must ask the employee whether he or she has tested positive, or refused to test, on any pre-employment drug or alcohol test administered by an employer to which the employee applied for, but did not obtain, safety-sensitive transportation work covered by DOT agency drug and alcohol testing rules during the past two years. If the employee admits that he or she had a positive test or a refusal to test, you must not use the employee to perform safety-sensitive functions for you, until and unless the employee documents successful completion of the return-to-duty process required in 49 CFR Subpart O."
-        consentText={`I, ${driverName}, as the prospective employee, certify that:`}
+        consentText={CONSENT_TEXTS.drugAlcoholTesting(driverName || "")}
         fieldName="drugTestConsentSignature"
         required={true}
       />

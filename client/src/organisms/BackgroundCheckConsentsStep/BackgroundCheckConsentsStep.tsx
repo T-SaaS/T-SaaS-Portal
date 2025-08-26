@@ -3,6 +3,7 @@ import { SignatureConsent } from "@/components/SignatureConsent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { CONSENT_TEXTS } from "@/utils/consentTexts";
 
 interface BackgroundCheckConsentsStepProps {
   companyName?: string;
@@ -26,7 +27,7 @@ export const BackgroundCheckConsentsStep: React.FC<
       <SignatureConsent
         title="Fair Credit Reporting Act"
         description="Authorization for Fair Credit Reporting Act"
-        consentText={`Pursuant to the federal Fair Credit Reporting Act, I hereby authorize ${companyName} and its designated agents and representatives to conduct a comprehensive review of my background through any consumer report for employment. I understand that the scope of the consumer report/investigative consumer report may include, but is not limited to, the following areas: verification of Social Security number; current and previous residences; employment history, including all personnel files; education; references; credit history and reports; criminal history, including records from any criminal justice agency in any or all federal, state or county jurisdictions; birth records; motor vehicle records, including traffic citations and registration; and any other public records.`}
+        consentText={CONSENT_TEXTS.fairCreditReportingAct(companyName || "")}
         fieldName="fairCreditReportingActConsentSignature"
         required={true}
       />
@@ -35,7 +36,10 @@ export const BackgroundCheckConsentsStep: React.FC<
       <SignatureConsent
         title="General Consent for Limited Queries of the Federal Motor Carrier Safety Administration (FMCSA) Drug and Alcohol Clearinghouse"
         description=""
-        consentText={`I, ${driverName}, hereby provide consent to ${companyName} to conduct a limited query of the FMCSA Commercial Driver's License Drug and Alcohol Clearinghouse (Clearinghouse) to determine whether drug or alcohol violation information about me exists in the Clearinghouse. I am consenting to multiple unlimited queries and for the duration of employment with ${companyName}. I understand that if the limited query conducted by ${companyName} indicates that drug or alcohol violation information about me exists in the Clearinghouse, FMCSA will not disclose that information to ${companyName} without first obtaining additional specific consent from me. I further understand that if I refuse to provide consent for ${companyName} to conduct a limited query of the Clearinghouse, ${companyName} must prohibit me from performing safety-sensitive functions, including driving a commercial motor vehicle, as required by FMCSA's drug and alcohol program regulations.`}
+        consentText={CONSENT_TEXTS.fmcsaClearinghouse(
+          companyName || "",
+          driverName || ""
+        )}
         fieldName="fmcsaClearinghouseConsentSignature"
         required={true}
       />
@@ -44,7 +48,7 @@ export const BackgroundCheckConsentsStep: React.FC<
       <SignatureConsent
         title="Motor Vehicle Record Consent"
         description="Authorization for driving record checks"
-        consentText={`I authorize ${companyName} to obtain my motor vehicle driving record from any state or jurisdiction where I have held a driver's license. I understand this authorization remains valid for the duration of my employment and may be used for periodic driving record reviews.`}
+        consentText={CONSENT_TEXTS.motorVehicleRecord(companyName || "")}
         fieldName="motorVehicleRecordConsentSignature"
         required={true}
       />

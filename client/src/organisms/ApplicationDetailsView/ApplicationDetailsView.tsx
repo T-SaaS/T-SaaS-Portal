@@ -31,6 +31,7 @@ import {
   Monitor,
   Smartphone,
   Tablet,
+  Printer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +42,7 @@ export interface ApplicationDetailsViewProps {
   formatDate: (dateString: string) => string;
   isEditing?: boolean;
   onExport?: () => void;
-  onApprove?: () => void;
-  onReject?: () => void;
+  onPrint?: () => void;
   onEdit?: () => void;
   onSave?: () => void;
   onCancel?: () => void;
@@ -55,8 +55,7 @@ export function ApplicationDetailsView({
   formatDate,
   isEditing = false,
   onExport,
-  onApprove,
-  onReject,
+  onPrint,
   onEdit,
   onSave,
   onCancel,
@@ -390,6 +389,16 @@ export function ApplicationDetailsView({
             >
               <Download className="w-4 h-4" />
               Export
+            </Button>
+          )}
+          {onPrint && application.status !== "draft" && (
+            <Button
+              variant="outline"
+              onClick={onPrint}
+              className="flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Print
             </Button>
           )}
           {!isEditing &&

@@ -3,6 +3,7 @@ import { SignatureConsent } from "@/components/SignatureConsent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { CONSENT_TEXTS } from "@/utils/consentTexts";
 
 interface GeneralApplicationConsentStepProps {
   companyName?: string;
@@ -27,23 +28,10 @@ export const GeneralApplicationConsentStep: React.FC<
       <SignatureConsent
         title="General Application Consent"
         description="Authorization for general application terms and conditions"
-        consentText={`I, ${driverName}, hereby acknowledge and agree to the following terms and conditions for my employment application with ${companyName}:
-
-1. I understand that this application is for employment purposes and that any false statements, omissions, or misrepresentations may result in the rejection of my application or termination of employment if hired.
-
-2. I authorize ${companyName} to contact my previous employers, educational institutions, and other references to verify the information provided in this application.
-
-3. I understand that employment is contingent upon successful completion of a background check, drug and alcohol testing, and any other pre-employment requirements.
-
-4. I agree to comply with all company policies, procedures, and safety requirements if employed.
-
-5. I understand that this application does not constitute a contract of employment and that employment is at-will, meaning either party may terminate the employment relationship at any time with or without cause.
-
-6. I certify that all information provided in this application is true, complete, and accurate to the best of my knowledge.
-
-7. I understand that ${companyName} is an equal opportunity employer and does not discriminate on the basis of race, color, religion, sex, national origin, age, disability, or any other protected characteristic.
-
-By signing below, I acknowledge that I have read, understood, and agree to all the terms and conditions stated above.`}
+        consentText={CONSENT_TEXTS.generalApplication(
+          driverName || "",
+          companyName || ""
+        )}
         fieldName="generalConsentSignature"
         required={true}
       />

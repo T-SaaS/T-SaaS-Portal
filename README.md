@@ -1,6 +1,6 @@
 # Driver Qualification Tool
 
-A comprehensive full-stack application for managing driver qualification applications with real-time form validation, background checks, administrative oversight, and email notifications.
+A comprehensive full-stack application for managing driver qualification applications with real-time form validation, background checks, administrative oversight, email notifications, and PDF generation.
 
 ## 🚀 Features
 
@@ -18,6 +18,7 @@ A comprehensive full-stack application for managing driver qualification applica
 - **Document Management** - Secure file upload and storage for signatures and documents
 - **Photo Capture** - Webcam integration for document photos
 - **Signature Pad** - Digital signature collection with edit capabilities
+- **PDF Generation & Viewing** - Generate and view driver application PDFs with @react-pdf/renderer
 
 ## 🏗️ Architecture
 
@@ -32,6 +33,7 @@ This is a full-stack TypeScript application with:
 - **State Management**: React Query (TanStack Query) + Context API
 - **File Storage**: Supabase Storage with public/private buckets
 - **Email Service**: ZeptoMail integration with templated emails
+- **PDF Generation**: @react-pdf/renderer for client-side PDF creation
 
 ## 📁 Project Structure
 
@@ -45,10 +47,11 @@ DriverQualificationTool/
 │   │   ├── templates/     # Page layouts (ExternalTemplate, PrivateTemplate)
 │   │   ├── pages/         # Page components (DriverForm, Dashboard)
 │   │   ├── components/    # Reusable UI components and utilities
+│   │   │   └── pdf/       # PDF generation and viewing components
 │   │   ├── hooks/         # Custom React hooks
 │   │   ├── contexts/      # React contexts (Auth, Company)
 │   │   ├── lib/           # Utility libraries (Supabase, QueryClient)
-│   │   ├── services/      # API services
+│   │   ├── services/      # API services and PDF service
 │   │   ├── schemas/       # Zod validation schemas
 │   │   ├── types/         # TypeScript type definitions
 │   │   ├── utils/         # Utility functions
@@ -93,6 +96,7 @@ DriverQualificationTool/
 - **Framer Motion 11.13** - Animation library
 - **React Webcam** - Camera integration
 - **Signature Pad** - Digital signature component
+- **@react-pdf/renderer** - PDF generation and viewing
 
 ### Backend
 
@@ -266,6 +270,25 @@ The frontend follows Atomic Design principles:
 - **Date range validation** with overlap detection
 - **SSN input** with masking and validation
 
+## 📄 PDF Generation & Viewing
+
+The application includes comprehensive PDF functionality:
+
+- **PDF Generation** - Generate driver application PDFs using @react-pdf/renderer
+- **PDF Viewing** - View PDFs in a modal interface with full-screen support
+- **PDF Download** - Download generated PDFs with custom filenames
+- **Print Support** - Print PDFs directly from the browser
+- **Template-based** - Uses ApplicationPDFTemplate for consistent formatting
+- **Web-optimized** - Client-side PDF generation for better performance
+
+### PDF Features
+
+- **Professional Layout** - Clean, professional PDF design
+- **Complete Data** - All application information included
+- **Company Branding** - Company name and details in PDF
+- **Responsive Design** - PDFs work well on all devices
+- **Print-friendly** - Optimized for printing and sharing
+
 ## 🚨 Background Check Integration
 
 The application includes comprehensive background check services:
@@ -384,6 +407,7 @@ For support and questions:
 
 ### Recent Changes
 
+- ✅ **PDF Generation & Viewing** - Complete PDF functionality with @react-pdf/renderer
 - ✅ **Draft Saving & Resume** - Secure draft functionality with magic links and email notifications
 - ✅ **Email System** - Complete email notification system with ZeptoMail
 - ✅ **Document Management** - Secure file upload and storage system
@@ -405,6 +429,7 @@ For support and questions:
 - **Email Notifications**: ✅ Complete
 - **Document Management**: ✅ Complete
 - **Background Checks**: ✅ Complete
+- **PDF Generation**: ✅ Complete
 - **Mobile Responsiveness**: ✅ Complete
 
 ### Roadmap
