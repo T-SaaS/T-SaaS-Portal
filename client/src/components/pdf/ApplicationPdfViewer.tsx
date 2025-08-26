@@ -11,7 +11,7 @@ interface PdfViewerProps {
   filename?: string;
 }
 
-export const PdfViewer: React.FC<PdfViewerProps> = ({
+export const ApplicationPdfViewer: React.FC<PdfViewerProps> = ({
   application,
   company,
   isOpen,

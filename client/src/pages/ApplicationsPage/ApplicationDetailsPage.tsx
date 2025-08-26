@@ -8,7 +8,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { formatDate } from "@/utils/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import { pdfService } from "@/services/pdfService";
-import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { ApplicationPdfViewer } from "@/components/pdf/ApplicationPdfViewer";
 import { exportSingleApplicationToCSV } from "@/utils/csvExport";
 
 export function ApplicationDetailsPage() {
@@ -195,7 +195,7 @@ export function ApplicationDetailsPage() {
       </div>
 
       {/* PDF Viewer Modal */}
-      <PdfViewer
+      <ApplicationPdfViewer
         application={applicationData}
         company={companyData as Company}
         isOpen={isPdfViewerOpen}
