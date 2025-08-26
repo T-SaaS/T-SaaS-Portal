@@ -1,6 +1,6 @@
-import ApplicationPDFTemplate from "@/components/pdf/ApplicationPDFTemplate";
 import React from "react";
-
+import ApplicationPDFTemplate from "@/components/pdf/ApplicationPDFTemplate";
+import { pdf } from "@react-pdf/renderer";
 // Implementation of the PDF service
 class ClientPdfService {
   async generateDriverApplicationPDF(
@@ -8,9 +8,6 @@ class ClientPdfService {
     company: any
   ): Promise<Blob> {
     try {
-      // Dynamic import to avoid SSR issues
-      const { pdf } = await import("@react-pdf/renderer");
-
       // Create the PDF document using the ApplicationPDFTemplate
       const element = React.createElement(ApplicationPDFTemplate, {
         data: { application, company },
