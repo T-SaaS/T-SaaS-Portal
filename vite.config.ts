@@ -29,6 +29,7 @@ export default defineConfig({
           ],
         },
       },
+      external: ["@react-pdf/renderer"],
     },
   },
   server: {
