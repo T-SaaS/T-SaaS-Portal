@@ -1,7 +1,7 @@
 import React from "react";
 import ApplicationPDFTemplate from "@/components/pdf/ApplicationPDFTemplate";
 import { pdf } from "@react-pdf/renderer";
-// Implementation of the PDF service
+
 class ClientPdfService {
   async generateDriverApplicationPDF(
     application: any,
@@ -55,6 +55,6 @@ class ClientPdfService {
 }
 
 // Create and export the service instance
-export const pdfService = new ClientPdfService();
+const pdfService = new ClientPdfService();
 
 export default pdfService;
