@@ -58,3 +58,6 @@ export type { StatusBadgeProps } from "./StatusBadge";
 export type { StatusCardConfig, StatusCardProps } from "./StatusCard";
 export type { StatusManagementProps } from "./StatusManagement";
 export type { StatusNotesProps } from "./StatusNotes";
+
+export { ApplicationPDFDownloadButton } from "./ApplicationPDFDownloadButton";
+export type { ApplicationPDFDownloadButtonProps } from "./ApplicationPDFDownloadButton";

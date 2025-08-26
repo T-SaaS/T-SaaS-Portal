@@ -17,15 +17,11 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
-  optimizeDeps: {
-    include: ["@react-pdf/renderer"],
-  },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist", "public"),
     emptyOutDir: true,
     rollupOptions: {
-      external: ["@react-pdf/renderer"],
       output: {
         manualChunks: {
           vendor: ["react", "react-dom"],
@@ -34,9 +30,6 @@ export default defineConfig({
             "@radix-ui/react-select",
             "@radix-ui/react-label",
           ],
-        },
-        globals: {
-          "@react-pdf/renderer": "ReactPDF",
         },
       },
     },

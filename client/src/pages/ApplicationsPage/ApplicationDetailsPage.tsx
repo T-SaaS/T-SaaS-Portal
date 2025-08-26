@@ -7,36 +7,29 @@ import { useDriverApplication } from "@/hooks/useDriverApplications";
 import { useCompany } from "@/hooks/useCompany";
 import { formatDate } from "@/utils/dateUtils";
 import { useToast } from "@/hooks/use-toast";
-import { pdfService } from "@/services/pdfService";
 import { ApplicationPdfViewer } from "@/components/pdf/ApplicationPdfViewer";
 import { exportSingleApplicationToCSV } from "@/utils/csvExport";
+import { ApplicationPDFDownloadButton } from "@/molecules";
 
 export function ApplicationDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // PDF state
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
 
-  // Fetch single application
+  // Fetch application and company data
   const {
     application: applicationData,
     loading: applicationLoading,
     refetch: refetchApplication,
   } = useDriverApplication(id || "");
 
-  // Fetch company data for the application
   const { company: companyData } = useCompany({
     companyId: applicationData?.company_id,
   });
-  // if (applicationData && companyData) {
-  //   setTimeout(() => {
-  //     setIsPdfViewerOpen(true);
-  //   }, 1000);
-  // }
 
-  const handleExport = (id: string) => {
+  // Handler functions
+  const handleExport = () => {
     if (!applicationData || !companyData) {
       toast({
         title: "Error",
@@ -64,7 +57,7 @@ export function ApplicationDetailsPage() {
     }
   };
 
-  const handlePrint = async (id: string) => {
+  const handlePrint = () => {
     if (!applicationData || !companyData) {
       toast({
         title: "Error",
@@ -74,7 +67,6 @@ export function ApplicationDetailsPage() {
       return;
     }
 
-    // Check if status is draft
     if (applicationData.status === "draft") {
       toast({
         title: "Cannot Print Draft",
@@ -85,52 +77,7 @@ export function ApplicationDetailsPage() {
       return;
     }
 
-    // Open the PDF viewer modal directly
     setIsPdfViewerOpen(true);
-    console.log("PDF Viewer Opened");
-  };
-
-  const handleDownload = async (id: string) => {
-    if (!applicationData || !companyData) {
-      toast({
-        title: "Error",
-        description: "Application or company data not available",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if status is draft
-    if (applicationData.status === "draft") {
-      toast({
-        title: "Cannot Download Draft",
-        description:
-          "Draft applications cannot be downloaded. Please submit the application first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const filename = `driver_application_${applicationData.first_name}_${applicationData.last_name}.pdf`;
-      await pdfService.downloadDriverApplicationPDF(
-        applicationData,
-        companyData,
-        filename
-      );
-
-      toast({
-        title: "PDF Downloaded",
-        description: "PDF has been downloaded successfully",
-      });
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast({
-        title: "PDF Download Failed",
-        description: "Failed to download PDF. Please try again.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleEdit = () => {
@@ -138,7 +85,6 @@ export function ApplicationDetailsPage() {
   };
 
   const handleStatusChange = () => {
-    // Refresh the application data when status changes
     refetchApplication();
   };
 
@@ -146,7 +92,11 @@ export function ApplicationDetailsPage() {
     setIsPdfViewerOpen(true);
   };
 
-  // Handle loading state
+  const handleClosePdf = () => {
+    setIsPdfViewerOpen(false);
+  };
+
+  // Loading state
   if (applicationLoading) {
     return (
       <div className="text-center py-12">
@@ -156,10 +106,14 @@ export function ApplicationDetailsPage() {
       </div>
     );
   }
-  // Handle not found state
+
+  // Not found state
   if (!applicationData) {
     return <ApplicationNotFound />;
   }
+
+  const isDraft = applicationData.status === "draft";
+  const canGeneratePdf = !isDraft && companyData;
 
   return (
     <>
@@ -167,28 +121,39 @@ export function ApplicationDetailsPage() {
         application={applicationData}
         company={companyData as Company}
         formatDate={formatDate}
-        isEditing={false} // No inline editing, always false
-        onExport={() => handleExport(applicationData.id)}
-        onPrint={() => handlePrint(applicationData.id)}
+        isEditing={false}
+        onExport={handleExport}
+        onPrint={handlePrint}
         onEdit={handleEdit}
-        onSave={() => {}} // No save logic
-        onCancel={() => {}} // No cancel logic
+        onSave={() => {}} // No save logic needed
+        onCancel={() => {}} // No cancel logic needed
         onStatusChange={handleStatusChange}
       />
 
-      {/* Additional PDF Actions */}
+      {/* PDF Actions */}
       <div className="mt-4 flex gap-2 justify-center">
-        <button
-          onClick={() => handleDownload(applicationData.id)}
-          disabled={applicationData.status === "draft"}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        <ApplicationPDFDownloadButton
+          application={applicationData}
+          company={companyData as Company}
+          disabled={!canGeneratePdf}
+          className={
+            canGeneratePdf
+              ? "px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              : "px-4 py-2 bg-gray-400 text-white rounded cursor-not-allowed"
+          }
         >
-          Download PDF
-        </button>
+          {isDraft ? "Download PDF (Draft)" : "Download PDF"}
+        </ApplicationPDFDownloadButton>
+
         <button
           onClick={handleShowPdf}
-          disabled={applicationData.status === "draft"}
+          disabled={isDraft}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          title={
+            isDraft
+              ? "Draft applications cannot be viewed"
+              : "View PDF in browser"
+          }
         >
           View PDF
         </button>
@@ -199,7 +164,7 @@ export function ApplicationDetailsPage() {
         application={applicationData}
         company={companyData as Company}
         isOpen={isPdfViewerOpen}
-        onClose={() => setIsPdfViewerOpen(false)}
+        onClose={handleClosePdf}
         filename={`driver_application_${applicationData.first_name}_${applicationData.last_name}.pdf`}
       />
     </>
