@@ -55,6 +55,6 @@ class ClientPdfService {
 }
 
 // Create and export the service instance
-const pdfService = new ClientPdfService();
+export const pdfService = new ClientPdfService();
 
 export default pdfService;
