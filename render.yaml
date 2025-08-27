@@ -10,7 +10,7 @@ services:
     region: Oregon (US West)
     plan: hobby
     branch: main
-    buildCommand: npm run build:prod
+    buildCommand: npm run build:render
     startCommand: npm start
     autoDeploy: true
     maxShutdownDelaySeconds: 120

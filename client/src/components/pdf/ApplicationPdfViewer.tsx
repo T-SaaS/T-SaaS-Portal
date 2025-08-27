@@ -44,3 +44,5 @@ export const ApplicationPdfViewer: React.FC<PdfViewerProps> = ({
     </div>
   );
 };
+
+export default ApplicationPdfViewer;

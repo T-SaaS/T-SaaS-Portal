@@ -273,14 +273,10 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
   data,
 }) => {
   const { application, company } = data;
+
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatBoolean = (value: boolean | null | undefined) => {
-    if (value === null || value === undefined) return "N/A";
-    return value ? "Yes" : "No";
   };
 
   return (
@@ -383,9 +379,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>
@@ -458,9 +458,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>
@@ -557,9 +561,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>
@@ -647,9 +655,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>
@@ -712,9 +724,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>
@@ -792,9 +808,13 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
       </Page>

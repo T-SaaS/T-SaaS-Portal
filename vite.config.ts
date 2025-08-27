@@ -22,7 +22,6 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist", "public"),
     emptyOutDir: true,
     rollupOptions: {
-      external: ["@react-pdf/renderer"],
       output: {
         manualChunks: {
           vendor: ["react", "react-dom"],
@@ -31,10 +30,28 @@ export default defineConfig({
             "@radix-ui/react-select",
             "@radix-ui/react-label",
           ],
+          pdf: ["@react-pdf/renderer"],
         },
-        globals: {
-          "@react-pdf/renderer": "ReactPDF",
-        },
+        // Ensure proper module format for better compatibility
+        format: "es",
+        // Add proper chunk naming
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
+      },
+      // Ensure external dependencies are handled properly
+      external: [],
+    },
+    // Add target for better compatibility
+    target: "es2015",
+    // Ensure source maps are generated for debugging
+    sourcemap: false,
+    // Add minify options for better compatibility
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: false,
+        drop_debugger: true,
       },
     },
   },
@@ -54,4 +71,9 @@ export default defineConfig({
   // Ensure assets are built with proper paths
   base: "/",
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  // Add optimizeDeps for better handling of dependencies
+  optimizeDeps: {
+    include: ["@react-pdf/renderer"],
+    exclude: [],
+  },
 });

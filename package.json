@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon",
@@ -11,6 +15,7 @@
     "build:client": "vite build",
     "build:server": "tsc --project tsconfig.server.json && node -e \"import('fs').then(fs => fs.cpSync('shared', 'dist/shared', {recursive: true}))\" && node scripts/fix-imports.js",
     "build:prod": "NODE_ENV=production npm run build",
+    "build:render": "NODE_ENV=production npm run build:client && npm run build:server",
     "preview": "vite preview",
     "start:server": "node dist/server/index.js",
     "start": "node dist/server/index.js"

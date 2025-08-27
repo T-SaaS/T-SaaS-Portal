@@ -11,7 +11,9 @@ export interface ApplicationPDFDownloadButtonProps {
   children?: React.ReactNode;
 }
 
-export const ApplicationPDFDownloadButton: React.FC<ApplicationPDFDownloadButtonProps> = ({
+export const ApplicationPDFDownloadButton: React.FC<
+  ApplicationPDFDownloadButtonProps
+> = ({
   application,
   company,
   disabled = false,
@@ -49,3 +51,5 @@ export const ApplicationPDFDownloadButton: React.FC<ApplicationPDFDownloadButton
     </PDFDownloadLink>
   );
 };
+
+export default ApplicationPDFDownloadButton;

@@ -137,3 +137,4 @@ export const exportSingleApplicationToCSV = (
 ) => {
   exportApplicationsToCSV([application], companies, filename);
 };
+
