@@ -38,8 +38,8 @@ const corsOptions = {
       // Add your production domain here when deployed
       "https://driverqualificationtool.onrender.com",
       "https://driverqualificationtool.onrender.com/",
-      "http://tsassportal.vlocitycapital.com",
-      "http://tsassportal.vlocitycapital.com/",
+      "http://tsaasportal.vlocitycapital.com",
+      "http://tsaasportal.vlocitycapital.com/",
     ];
 
     // Add origins from environment variable
