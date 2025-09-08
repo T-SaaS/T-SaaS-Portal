@@ -17,7 +17,7 @@ if (!process.env.VITE_SUPABASE_URL) {
 
 // Use service role key for server-side operations (higher permissions)
 const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseKey) {
   throw new Error(

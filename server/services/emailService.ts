@@ -58,8 +58,8 @@ export class EmailService {
 
   constructor() {
     // Initialize ZeptoMail with environment variables
-    const token = process.env.ZEPTOMAIL_API_KEY || "";
-    const url = process.env.ZEPTOMAIL_API_URL || "api.zeptomail.com/";
+    const token = process.env.VITE_ZEPTOMAIL_API_KEY || "";
+    const url = process.env.VITE_ZEPTOMAIL_API_URL || "api.zeptomail.com/";
 
     console.log("EmailService initialization:");
 
@@ -80,7 +80,7 @@ export class EmailService {
       }
     } else {
       console.warn(
-        "ZEPTOMAIL_API_KEY not set - email functionality will be disabled"
+        "VITE_ZEPTOMAIL_API_KEY not set - email functionality will be disabled"
       );
       this.zeptoMail = null;
     }
