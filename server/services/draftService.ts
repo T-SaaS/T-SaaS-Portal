@@ -81,6 +81,12 @@ export class DraftService {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + this.TOKEN_EXPIRY_DAYS);
 
+        console.log("Generated new token for existing draft:", {
+          tokenPrefix: token.substring(0, 8) + "...",
+          expiresAt: expiresAt.toISOString(),
+          tokenHash: this.hashToken(token).substring(0, 8) + "...",
+        });
+
         const updateData = {
           ...data,
           status: "draft" as const,
@@ -100,6 +106,12 @@ export class DraftService {
         token = this.generateToken();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + this.TOKEN_EXPIRY_DAYS);
+
+        console.log("Generated new token for new draft:", {
+          tokenPrefix: token.substring(0, 8) + "...",
+          expiresAt: expiresAt.toISOString(),
+          tokenHash: this.hashToken(token).substring(0, 8) + "...",
+        });
 
         const createData = {
           ...data,
@@ -160,34 +172,70 @@ export class DraftService {
     error?: string;
   }> {
     try {
+      console.log(
+        "Attempting to resume draft with token:",
+        token.substring(0, 8) + "..."
+      );
+
       // Find application with matching token hash
       const applications = await db.getAllDriverApplications();
+      console.log("Total applications found:", applications.length);
+
       const draft = applications.find((app) => {
+        console.log("Checking application:", {
+          id: app.id,
+          status: app.status,
+          hasTokenHash: !!app.draft_token_hash,
+          hasExpiry: !!app.draft_token_expires_at,
+          expiryDate: app.draft_token_expires_at,
+        });
+
         if (!app.draft_token_hash || !app.draft_token_expires_at) {
+          console.log("Application missing token hash or expiry");
           return false;
         }
 
         // Check if token is valid
-        if (!this.verifyToken(token, app.draft_token_hash)) {
+        const tokenValid = this.verifyToken(token, app.draft_token_hash);
+        console.log("Token verification result:", tokenValid);
+
+        if (!tokenValid) {
+          console.log("Token verification failed");
           return false;
         }
 
         // Check if token has expired
         const expiresAt = new Date(app.draft_token_expires_at);
-        if (expiresAt < new Date()) {
+        const now = new Date();
+        const isExpired = expiresAt < now;
+
+        console.log("Token expiry check:", {
+          expiresAt: expiresAt.toISOString(),
+          now: now.toISOString(),
+          isExpired,
+          timeDifference: expiresAt.getTime() - now.getTime(),
+        });
+
+        if (isExpired) {
+          console.log("Token has expired");
           return false;
         }
 
-        return app.status === "draft";
+        const isDraft = app.status === "draft";
+        console.log("Application is draft:", isDraft);
+
+        return isDraft;
       });
 
       if (!draft) {
+        console.log("No valid draft found for token");
         return {
           success: false,
           error: "Invalid or expired draft token",
         };
       }
 
+      console.log("Draft found successfully:", draft.id);
       return {
         success: true,
         data: draft,

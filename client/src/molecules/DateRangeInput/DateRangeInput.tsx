@@ -67,57 +67,67 @@ export function DateRangeInput({
 
   const hasError =
     fromMonthError || fromYearError || toMonthError || toYearError;
-  
+
   return (
     <div className={cn("space-y-2", className)}>
       <Label>
         <RequiredLabel required={required}>{label}</RequiredLabel>
       </Label>
-      <div className="grid grid-cols-2 gap-2 mt-1">
-        <Select
-          onValueChange={(value) => fromMonthField.onChange(Number(value))}
-          value={fromMonthField.value?.toString()}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Month" />
-          </SelectTrigger>
-          <SelectContent>
-            {months.map((month) => (
-              <SelectItem key={month.value} value={month.value.toString()}>
-                {month.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="number"
-          placeholder="2020"
-          {...fromYearField}
-          onChange={(e) => fromYearField.onChange(Number(e.target.value))}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        <Select
-          onValueChange={(value) => toMonthField.onChange(Number(value))}
-          value={toMonthField.value?.toString()}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Month" />
-          </SelectTrigger>
-          <SelectContent>
-            {months.map((month) => (
-              <SelectItem key={month.value} value={month.value.toString()}>
-                {month.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="number"
-          placeholder="2024"
-          {...toYearField}
-          onChange={(e) => toYearField.onChange(Number(e.target.value))}
-        />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">From Month</Label>
+          <Select
+            onValueChange={(value) => fromMonthField.onChange(Number(value))}
+            value={fromMonthField.value?.toString()}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value.toString()}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">From Year</Label>
+          <Input
+            type="number"
+            placeholder="2020"
+            {...fromYearField}
+            onChange={(e) => fromYearField.onChange(Number(e.target.value))}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">To Month</Label>
+          <Select
+            onValueChange={(value) => toMonthField.onChange(Number(value))}
+            value={toMonthField.value?.toString()}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value.toString()}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">To Year</Label>
+          <Input
+            type="number"
+            placeholder="2024"
+            {...toYearField}
+            onChange={(e) => toYearField.onChange(Number(e.target.value))}
+          />
+        </div>
       </div>
       {hasError && (
         <p className="text-sm text-red-500 mt-1">

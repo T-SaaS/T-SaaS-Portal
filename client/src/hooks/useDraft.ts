@@ -1,11 +1,12 @@
 import { useCompanyContext } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { draftValidationSchema } from "@/schemas/driverFormSchemas";
 import type { DriverFormValues } from "@/types/driverApplicationForm";
 import { getDeviceInfo } from "@/utils/deviceInfo";
 import type { DriverApplication } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export const useDraft = () => {
@@ -13,11 +14,46 @@ export const useDraft = () => {
   const { company } = useCompanyContext();
   const [searchParams] = useSearchParams();
 
+  // Track retry attempts to prevent infinite loops
+  const retryCountRef = useRef(0);
+  const maxRetries = 2; // Limit retries to prevent infinite loops
+
   // Check if there's a resume token in the URL
   const resumeToken = searchParams.get("resume");
 
+  // Function to clean up URL by removing resume token
+  const cleanupUrl = useCallback(() => {
+    if (resumeToken) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("resume");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
   const saveDraftMutation = useMutation({
     mutationFn: async (data: Partial<DriverFormValues>) => {
+      // Validate draft data using the relaxed validation schema
+      try {
+        await draftValidationSchema.validate(data, { abortEarly: false });
+      } catch (validationError: any) {
+        // For drafts, we'll log validation errors but still allow saving
+        // Only throw if there are critical errors (like invalid email format)
+        const criticalErrors = validationError.inner?.filter(
+          (err: any) => err.type === "email" || err.type === "matches"
+        );
+
+        if (criticalErrors && criticalErrors.length > 0) {
+          throw new Error(
+            `Validation errors: ${criticalErrors
+              .map((err: any) => err.message)
+              .join(", ")}`
+          );
+        }
+
+        // Log non-critical validation warnings
+        console.warn("Draft validation warnings:", validationError.inner);
+      }
+
       // Get device information
       const deviceInfo = getDeviceInfo();
 
@@ -57,7 +93,10 @@ export const useDraft = () => {
         jobs: data.jobs?.map((job) => ({
           employerName: job.employerName,
           positionHeld: job.positionHeld,
+          businessName: job.businessName,
           companyEmail: job.companyEmail,
+          companyPhone: job.companyPhone,
+          reasonForLeaving: job.reasonForLeaving,
           fromMonth: Number(job.fromMonth),
           fromYear: Number(job.fromYear),
           toMonth: Number(job.toMonth),
@@ -74,7 +113,7 @@ export const useDraft = () => {
         drug_test_consent: data.drugTestConsentSignatureConsent,
         drug_test_question: data.drugTestQuestion,
         general_consent: data.generalConsentSignatureConsent,
-        // Device info
+        // Device and IP information
         device_info: deviceInfo,
       };
 
@@ -83,26 +122,21 @@ export const useDraft = () => {
         "/api/v1/driver-applications/draft",
         draftData
       );
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Failed to save draft");
-      }
-
-      return responseData;
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Draft Saved",
+        title: "Draft Saved Successfully",
         description:
           "Your progress has been saved. Check your email for the resume link.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save draft. Please try again.",
+        title: "Failed to Save Draft",
+        description:
+          error.message ||
+          "There was an error saving your draft. Please try again.",
         variant: "destructive",
       });
     },
@@ -110,6 +144,13 @@ export const useDraft = () => {
 
   const resumeDraftMutation = useMutation({
     mutationFn: async (token: string) => {
+      // Check retry count before attempting
+      if (retryCountRef.current >= maxRetries) {
+        throw new Error(
+          "Maximum retry attempts reached. Please start a new application."
+        );
+      }
+
       const response = await apiRequest(
         "POST",
         "/api/v1/driver-applications/draft/resume",
@@ -119,22 +160,39 @@ export const useDraft = () => {
       const responseData = await response.json();
 
       if (!response.ok) {
+        // Increment retry count on error
+        retryCountRef.current += 1;
+
+        // Check if it's a token-related error
+        if (responseData.message?.includes("Invalid or expired draft token")) {
+          throw new Error(
+            "This draft link has expired or is invalid. Please start a new application."
+          );
+        }
+
         throw new Error(responseData.message || "Failed to resume draft");
       }
 
+      // Reset retry count on success
+      retryCountRef.current = 0;
       return responseData;
     },
     onSuccess: (data) => {
       // Toast is handled in the component to avoid duplicates
     },
     onError: (error: Error) => {
-      toast({
-        title: "Load Failed",
-        description:
-          error.message || "Failed to load draft. The link may have expired.",
-        variant: "destructive",
-      });
+      // Don't show toast for retry limit errors - let the component handle it
+      if (!error.message.includes("Maximum retry attempts reached")) {
+        toast({
+          title: "Load Failed",
+          description:
+            error.message || "Failed to load draft. The link may have expired.",
+          variant: "destructive",
+        });
+      }
     },
+    // Disable automatic retries to prevent infinite loops
+    retry: false,
   });
 
   // Convert DriverApplication to DriverFormValues
@@ -172,7 +230,10 @@ export const useDraft = () => {
           draft.jobs?.map((job) => ({
             employerName: job.employerName,
             positionHeld: job.positionHeld,
+            businessName: job.businessName,
             companyEmail: job.companyEmail,
+            companyPhone: job.companyPhone,
+            reasonForLeaving: job.reasonForLeaving,
             fromMonth: job.fromMonth,
             fromYear: job.fromYear,
             toMonth: job.toMonth,
@@ -194,6 +255,11 @@ export const useDraft = () => {
     []
   );
 
+  // Reset retry count when token changes
+  const resetRetryCount = useCallback(() => {
+    retryCountRef.current = 0;
+  }, []);
+
   return {
     saveDraft: saveDraftMutation.mutate,
     resumeDraft: resumeDraftMutation.mutate,
@@ -202,5 +268,9 @@ export const useDraft = () => {
     resumeToken,
     convertDraftToFormValues,
     draftData: resumeDraftMutation.data?.data,
+    resetRetryCount,
+    retryCount: retryCountRef.current,
+    maxRetries,
+    cleanupUrl,
   };
 };

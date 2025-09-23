@@ -711,8 +711,20 @@ export function ApplicationDetailsView({
                         Company Email
                       </label>
                       <p className="text-slate-900">
-                        {job.companyEmail || "N/A"}
+                        {job.companyEmail || "Not Provided"}
                       </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">
+                        Company Phone
+                      </label>
+                      <p className="text-slate-900">{job.companyPhone || "Not Provided"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">
+                        Reason for Leaving
+                      </label>
+                      <p className="text-slate-900">{job.reasonForLeaving || "Not Provided"}</p>
                     </div>
                   </div>
                 </div>

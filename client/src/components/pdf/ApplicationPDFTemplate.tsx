@@ -420,8 +420,8 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
             </View>
           )}
           {application.addresses.length > 0 &&
-            application.addresses.map((address) => (
-              <View style={styles.row}>
+            application.addresses.map((address,index) => (
+              <View style={styles.row} key={index}>
                 <Text style={styles.value}>{address.address}</Text>
                 <Text style={styles.value}>
                   {address.city}, {address.state} {address.zip}
@@ -444,8 +444,8 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
             </View>
           )}
           {application.jobs.length > 0 &&
-            application.jobs.map((employment) => (
-              <View style={styles.row}>
+            application.jobs.map((employment, index) => (
+              <View style={styles.row} key={index}>
                 <Text style={styles.value}>{employment.employerName}</Text>
                 <Text style={styles.value}>{employment.positionHeld}</Text>
                 <Text style={styles.value}>{employment.companyEmail}</Text>
@@ -514,7 +514,34 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
               </View>
             )}
           </View>
-
+        </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Generated on {new Date().toLocaleDateString()} at{" "}
+            {new Date().toLocaleTimeString()}
+          </Text>
+          <Text style={styles.footerText}>
+            Driver Application - {company.name}
+          </Text>
+        </View>
+{/* Page Number */}
+        <Text
+          style={styles.pageNumber}
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
+          fixed
+        />
+      </Page>
+      <Page size="A4" style={styles.page}>
+        {/* Consents & Authorizations Section */}
+        {/* this page is for the consents and authorizations and the signature pages */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Consents & Authorizations</Text>
           {/* FMCSA Clearinghouse */}
           <View style={styles.consentSection}>
             <View style={styles.consentHeader}>
@@ -557,6 +584,15 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
               </View>
             )}
           </View>
+        </View>
+         <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Generated on {new Date().toLocaleDateString()} at{" "}
+            {new Date().toLocaleTimeString()}
+          </Text>
+          <Text style={styles.footerText}>
+            Driver Application - {company.name}
+          </Text>
         </View>
         {/* Page Number */}
         <Text
@@ -613,7 +649,34 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
               </View>
             )}
           </View>
-
+        </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Generated on {new Date().toLocaleDateString()} at{" "}
+            {new Date().toLocaleTimeString()}
+          </Text>
+          <Text style={styles.footerText}>
+            Driver Application - {company.name}
+          </Text>
+        </View>
+        {/* Page Number */}
+        <Text
+          style={styles.pageNumber}
+          render={({
+            pageNumber,
+            totalPages,
+          }: {
+            pageNumber: number;
+            totalPages: number;
+          }) => `Page ${pageNumber} of ${totalPages}`}
+          fixed
+        />
+      </Page>
+      <Page size="A4" style={styles.page}>
+        {/* Consents & Authorizations Section */}
+        {/* this page is for the consents and authorizations and the signature pages */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Consents & Authorizations</Text>
           {/* Drug & Alcohol Testing */}
           <View style={styles.consentSection}>
             <View style={styles.consentHeader}>
@@ -651,6 +714,15 @@ const ApplicationPDFTemplate: React.FC<ApplicationPDFTemplateProps> = ({
               </View>
             )}
           </View>
+        </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Generated on {new Date().toLocaleDateString()} at{" "}
+            {new Date().toLocaleTimeString()}
+          </Text>
+          <Text style={styles.footerText}>
+            Driver Application - {company.name}
+          </Text>
         </View>
         {/* Page Number */}
         <Text

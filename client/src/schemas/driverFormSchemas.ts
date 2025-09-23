@@ -1,5 +1,73 @@
-import { calculateAge } from "@/utils/dateUtils";
 import * as Yup from "yup";
+
+// Reusable validation patterns
+const PHONE_REGEX =
+  /^[\+]?1?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/;
+const PHONE_ERROR_MESSAGE =
+  "Phone number must be a valid US number (e.g., 123-456-7890, (123) 456-7890, +1-123-456-7890)";
+const ZIP_REGEX = /^\d{5}(-\d{4})?$/;
+const ZIP_ERROR_MESSAGE = "ZIP code must be in format 12345 or 12345-6789";
+const SSN_REGEX = /^\d{3}-\d{2}-\d{4}$/;
+const SSN_ERROR_MESSAGE = "SSN must be in format 123-45-6789";
+
+// Reusable validation schemas
+const phoneValidation = Yup.string()
+  .required("Phone number is required")
+  .matches(PHONE_REGEX, PHONE_ERROR_MESSAGE);
+
+const optionalPhoneValidation = Yup.string()
+  .optional()
+  .matches(PHONE_REGEX, PHONE_ERROR_MESSAGE);
+
+const zipValidation = Yup.string()
+  .required("ZIP code is required")
+  .matches(ZIP_REGEX, ZIP_ERROR_MESSAGE);
+
+const optionalZipValidation = Yup.string()
+  .optional()
+  .matches(ZIP_REGEX, ZIP_ERROR_MESSAGE);
+
+const ssnValidation = Yup.string()
+  .matches(SSN_REGEX, SSN_ERROR_MESSAGE)
+  .required("Social Security Number is required");
+
+const optionalSsnValidation = Yup.string()
+  .optional()
+  .matches(SSN_REGEX, SSN_ERROR_MESSAGE);
+
+// Age calculation utility
+const calculateAge = (birthDate: string): number => {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// Future date validation utility
+const futureDateValidation = (value: string): boolean => {
+  if (!value) return false;
+  const expirationDate = new Date(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+  return expirationDate >= today;
+};
+
+// Image validation utility
+const imageValidation = (value: string): boolean => {
+  if (!value) return false;
+  return value.startsWith("data:image/");
+};
+
+// Signature validation utility
+const signatureValidation = (value: string): boolean => {
+  if (!value) return false;
+  return value.startsWith("data:image/");
+};
 
 export const stepSchemas = [
   // Step 1: Personal Information
@@ -12,27 +80,20 @@ export const stepSchemas = [
         if (!value) return false;
         return calculateAge(value) >= 18;
       }),
-    socialSecurityNumber: Yup.string()
-      .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
-      .required("Social Security Number is required"),
+    socialSecurityNumber: ssnValidation,
     positionAppliedFor: Yup.string().required("Position is required"),
   }),
 
   // Step 2: Contact & Address
   Yup.object().shape({
-    phone: Yup.string().required("Phone number is required"),
+    phone: phoneValidation,
     email: Yup.string()
       .email("Invalid email format")
       .required("Email is required"),
     currentAddress: Yup.string().required("Current Address is required"),
     currentCity: Yup.string().required("Current City is required"),
     currentState: Yup.string().required("Current State is required"),
-    currentZip: Yup.string()
-      .required("Current ZIP code is required")
-      .matches(
-        /^\d{5}(-\d{4})?$/,
-        "ZIP code must be in format 12345 or 12345-6789"
-      ),
+    currentZip: zipValidation,
     currentAddressFromMonth: Yup.number()
       .min(1)
       .max(12)
@@ -48,38 +109,20 @@ export const stepSchemas = [
     licenseState: Yup.string().required("License State is required"),
     licenseExpirationDate: Yup.string()
       .required("License Expiration Date is required")
-      .test("future-date", "License must not be expired", function (value) {
-        if (!value) return false;
-        const expirationDate = new Date(value);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time to start of day
-        return expirationDate >= today;
-      }),
+      .test("future-date", "License must not be expired", futureDateValidation),
     medicalCardExpirationDate: Yup.string()
       .required("Medical Card Expiration Date is required")
       .test(
         "future-date",
         "Medical Card must not be expired",
-        function (value) {
-          if (!value) return false;
-          const expirationDate = new Date(value);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0); // Reset time to start of day
-          return expirationDate >= today;
-        }
+        futureDateValidation
       ),
     licensePhoto: Yup.string()
       .required("Driver's License photo is required")
-      .test("valid-image", "Please provide a valid image", function (value) {
-        if (!value) return false;
-        return value.startsWith("data:image/");
-      }),
+      .test("valid-image", "Please provide a valid image", imageValidation),
     medicalCardPhoto: Yup.string()
       .required("Medical Card photo is required")
-      .test("valid-image", "Please provide a valid image", function (value) {
-        if (!value) return false;
-        return value.startsWith("data:image/");
-      }),
+      .test("valid-image", "Please provide a valid image", imageValidation),
   }),
 
   // Step 4: Address History
@@ -89,12 +132,7 @@ export const stepSchemas = [
         address: Yup.string().required("Address is required"),
         city: Yup.string().required("City is required"),
         state: Yup.string().required("State is required"),
-        zip: Yup.string()
-          .required("ZIP code is required")
-          .matches(
-            /^\d{5}(-\d{4})?$/,
-            "ZIP code must be in format 12345 or 12345-6789"
-          ),
+        zip: zipValidation,
         fromMonth: Yup.number()
           .min(1)
           .max(12)
@@ -109,10 +147,15 @@ export const stepSchemas = [
   // Step 5: Employment History
   Yup.object().shape({
     jobs: Yup.array()
+      .min(1, "At least one job is required")
       .of(
         Yup.object().shape({
           employerName: Yup.string().required("Employer Name is required"),
           positionHeld: Yup.string().required("Position Held is required"),
+          businessName: Yup.string().required("Business Name is required"),
+          companyEmail: Yup.string().email("Invalid email format").optional(),
+          companyPhone: optionalPhoneValidation,
+          reasonForLeaving: Yup.string().optional(),
           fromMonth: Yup.number()
             .min(1)
             .max(12)
@@ -121,11 +164,10 @@ export const stepSchemas = [
           toMonth: Yup.number().min(1).max(12).required("To Month is required"),
           toYear: Yup.number().min(1900).required("To Year is required"),
         })
-      )
-      .min(1, "At least one job is required"),
+      ),
   }),
 
-  // Step 5: Background Check Consents
+  // Step 6: Background Check Consents
   Yup.object().shape({
     fairCreditReportingActConsentSignatureConsent: Yup.boolean()
       .required("Fair Credit Reporting Act consent is required")
@@ -136,10 +178,7 @@ export const stepSchemas = [
         .test(
           "valid-signature",
           "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
+          signatureValidation
         ),
     }),
     fmcsaClearinghouseConsentSignatureConsent: Yup.boolean()
@@ -151,10 +190,7 @@ export const stepSchemas = [
         .test(
           "valid-signature",
           "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
+          signatureValidation
         ),
     }),
     motorVehicleRecordConsentSignatureConsent: Yup.boolean()
@@ -166,15 +202,12 @@ export const stepSchemas = [
         .test(
           "valid-signature",
           "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
+          signatureValidation
         ),
     }),
   }),
 
-  // Step 6: Drug & Alcohol Testing Consent
+  // Step 7: Drug & Alcohol Testing Consent
   Yup.object().shape({
     drugTestConsentSignatureConsent: Yup.boolean()
       .required("Drug test consent is required")
@@ -185,10 +218,7 @@ export const stepSchemas = [
         .test(
           "valid-signature",
           "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
+          signatureValidation
         ),
     }),
     drugTestQuestion: Yup.string()
@@ -196,7 +226,7 @@ export const stepSchemas = [
       .oneOf(["yes", "no"], "Please select Yes or No"),
   }),
 
-  // Step 7: General Application Consent
+  // Step 8: General Application Consent
   Yup.object().shape({
     generalConsentSignatureConsent: Yup.boolean()
       .required("General application consent is required")
@@ -207,10 +237,7 @@ export const stepSchemas = [
         .test(
           "valid-signature",
           "Please provide a valid signature",
-          function (value) {
-            if (!value) return false;
-            return value.startsWith("data:image/");
-          }
+          signatureValidation
         ),
     }),
   }),
@@ -224,38 +251,20 @@ export const completeFormSchema = Yup.object().shape({
     .required("Date of Birth is required")
     .test("age", "You must be at least 18 years old", function (value) {
       if (!value) return false;
-      const birthDate = new Date(value);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-
-      if (
-        monthDiff < 0 ||
-        (monthDiff === 0 && today.getDate() < birthDate.getDate())
-      ) {
-        return age - 1 >= 18;
-      }
-      return age >= 18;
+      return calculateAge(value) >= 18;
     }),
-  socialSecurityNumber: Yup.string()
-    .matches(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format 123-45-6789")
-    .required("Social Security Number is required"),
+  socialSecurityNumber: ssnValidation,
   positionAppliedFor: Yup.string().required("Position is required"),
 
   // Step 2: Contact & Address
-  phone: Yup.string().required("Phone number is required"),
+  phone: phoneValidation,
   email: Yup.string()
     .email("Invalid email format")
     .required("Email is required"),
   currentAddress: Yup.string().required("Current Address is required"),
   currentCity: Yup.string().required("Current City is required"),
   currentState: Yup.string().required("Current State is required"),
-  currentZip: Yup.string()
-    .required("Current ZIP code is required")
-    .matches(
-      /^\d{5}(-\d{4})?$/,
-      "ZIP code must be in format 12345 or 12345-6789"
-    ),
+  currentZip: zipValidation,
   currentAddressFromMonth: Yup.number()
     .min(1)
     .max(12)
@@ -269,34 +278,20 @@ export const completeFormSchema = Yup.object().shape({
   licenseState: Yup.string().required("License State is required"),
   licenseExpirationDate: Yup.string()
     .required("License Expiration Date is required")
-    .test("future-date", "License must not be expired", function (value) {
-      if (!value) return false;
-      const expirationDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      return expirationDate >= today;
-    }),
+    .test("future-date", "License must not be expired", futureDateValidation),
   medicalCardExpirationDate: Yup.string()
     .required("Medical Card Expiration Date is required")
-    .test("future-date", "Medical Card must not be expired", function (value) {
-      if (!value) return false;
-      const expirationDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      return expirationDate >= today;
-    }),
+    .test(
+      "future-date",
+      "Medical Card must not be expired",
+      futureDateValidation
+    ),
   licensePhoto: Yup.string()
-    .nullable()
-    .test("valid-image", "Please provide a valid image", function (value) {
-      if (!value) return true; // Allow null/empty
-      return value.startsWith("data:image/");
-    }),
+    .required("Driver's License photo is required")
+    .test("valid-image", "Please provide a valid image", imageValidation),
   medicalCardPhoto: Yup.string()
-    .nullable()
-    .test("valid-image", "Please provide a valid image", function (value) {
-      if (!value) return true; // Allow null/empty
-      return value.startsWith("data:image/");
-    }),
+    .required("Medical Card photo is required")
+    .test("valid-image", "Please provide a valid image", imageValidation),
 
   // Step 4: Address History
   addresses: Yup.array().of(
@@ -304,12 +299,7 @@ export const completeFormSchema = Yup.object().shape({
       address: Yup.string().required("Address is required"),
       city: Yup.string().required("City is required"),
       state: Yup.string().required("State is required"),
-      zip: Yup.string()
-        .required("ZIP code is required")
-        .matches(
-          /^\d{5}(-\d{4})?$/,
-          "ZIP code must be in format 12345 or 12345-6789"
-        ),
+      zip: zipValidation,
       fromMonth: Yup.number().min(1).max(12).required("From Month is required"),
       fromYear: Yup.number().min(1900).required("From Year is required"),
       toMonth: Yup.number().min(1).max(12).required("To Month is required"),
@@ -319,10 +309,15 @@ export const completeFormSchema = Yup.object().shape({
 
   // Step 5: Employment History
   jobs: Yup.array()
+    .min(1, "At least one job is required")
     .of(
       Yup.object().shape({
         employerName: Yup.string().required("Employer Name is required"),
         positionHeld: Yup.string().required("Position Held is required"),
+        businessName: Yup.string().required("Business Name is required"),
+        companyEmail: Yup.string().email("Invalid email format").optional(),
+        companyPhone: optionalPhoneValidation,
+        reasonForLeaving: Yup.string().optional(),
         fromMonth: Yup.number()
           .min(1)
           .max(12)
@@ -331,8 +326,7 @@ export const completeFormSchema = Yup.object().shape({
         toMonth: Yup.number().min(1).max(12).required("To Month is required"),
         toYear: Yup.number().min(1900).required("To Year is required"),
       })
-    )
-    .min(1, "At least one job is required"),
+    ),
 
   // Step 6: Background Check Consents
   fairCreditReportingActConsentSignatureConsent: Yup.boolean()
@@ -344,10 +338,7 @@ export const completeFormSchema = Yup.object().shape({
       .test(
         "valid-signature",
         "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
+        signatureValidation
       ),
   }),
   fmcsaClearinghouseConsentSignatureConsent: Yup.boolean()
@@ -359,10 +350,7 @@ export const completeFormSchema = Yup.object().shape({
       .test(
         "valid-signature",
         "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
+        signatureValidation
       ),
   }),
   motorVehicleRecordConsentSignatureConsent: Yup.boolean()
@@ -374,10 +362,7 @@ export const completeFormSchema = Yup.object().shape({
       .test(
         "valid-signature",
         "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
+        signatureValidation
       ),
   }),
 
@@ -391,10 +376,7 @@ export const completeFormSchema = Yup.object().shape({
       .test(
         "valid-signature",
         "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
+        signatureValidation
       ),
   }),
   drugTestQuestion: Yup.string()
@@ -411,12 +393,137 @@ export const completeFormSchema = Yup.object().shape({
       .test(
         "valid-signature",
         "Please provide a valid signature",
-        function (value) {
-          if (!value) return false;
-          return value.startsWith("data:image/");
-        }
+        signatureValidation
       ),
   }),
+});
+
+// Relaxed validation for draft saving (allows partial data)
+export const draftValidationSchema = Yup.object().shape({
+  // Personal Information - all optional for drafts
+  firstName: Yup.string().optional(),
+  lastName: Yup.string().optional(),
+  dob: Yup.string()
+    .optional()
+    .test("age", "You must be at least 18 years old", function (value) {
+      if (!value) return true; // Skip validation if not provided
+      return calculateAge(value) >= 18;
+    }),
+  socialSecurityNumber: optionalSsnValidation,
+  positionAppliedFor: Yup.string().optional(),
+
+  // Contact & Address - all optional for drafts
+  phone: optionalPhoneValidation,
+  email: Yup.string().email("Invalid email format").optional(),
+  currentAddress: Yup.string().optional(),
+  currentCity: Yup.string().optional(),
+  currentState: Yup.string().optional(),
+  currentZip: optionalZipValidation,
+  currentAddressFromMonth: Yup.number().min(1).max(12).optional(),
+  currentAddressFromYear: Yup.number().min(1900).optional(),
+
+  // License Information - all optional for drafts
+  licenseNumber: Yup.string().optional(),
+  licenseState: Yup.string().optional(),
+  licenseExpirationDate: Yup.string()
+    .optional()
+    .test(
+      "future-date",
+      "Expiration date must be in the future",
+      function (value) {
+        if (!value) return true; // Skip validation if not provided
+        return new Date(value) > new Date();
+      }
+    ),
+  medicalCardExpirationDate: Yup.string()
+    .optional()
+    .test(
+      "future-date",
+      "Expiration date must be in the future",
+      function (value) {
+        if (!value) return true; // Skip validation if not provided
+        return new Date(value) > new Date();
+      }
+    ),
+
+  // Address History - optional for drafts
+  addresses: Yup.array()
+    .of(
+      Yup.object().shape({
+        address: Yup.string().optional(),
+        city: Yup.string().optional(),
+        state: Yup.string().optional(),
+        zip: optionalZipValidation,
+        fromMonth: Yup.number().min(1).max(12).optional(),
+        fromYear: Yup.number().min(1900).optional(),
+        toMonth: Yup.number().min(1).max(12).optional(),
+        toYear: Yup.number().min(1900).optional(),
+      })
+    )
+    .optional(),
+
+  // Employment History - optional for drafts
+  jobs: Yup.array()
+    .of(
+      Yup.object().shape({
+        employerName: Yup.string().optional(),
+        positionHeld: Yup.string().optional(),
+        businessName: Yup.string().optional(),
+        companyEmail: Yup.string().email("Invalid email format").optional(),
+        companyPhone: optionalPhoneValidation,
+        reasonForLeaving: Yup.string().optional(),
+        fromMonth: Yup.number().min(1).max(12).optional(),
+        fromYear: Yup.number().min(1900).optional(),
+        toMonth: Yup.number().min(1).max(12).optional(),
+        toYear: Yup.number().min(1900).optional(),
+      })
+    )
+    .optional(),
+
+  // Documents - optional for drafts
+  licensePhoto: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+  medicalCardPhoto: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+
+  // Consents and Signatures - optional for drafts
+  fairCreditReportingActConsentSignatureConsent: Yup.boolean().optional(),
+  fairCreditReportingActConsentSignature: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+  fmcsaClearinghouseConsentSignatureConsent: Yup.boolean().optional(),
+  fmcsaClearinghouseConsentSignature: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+  motorVehicleRecordConsentSignatureConsent: Yup.boolean().optional(),
+  motorVehicleRecordConsentSignature: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+  drugTestConsentSignatureConsent: Yup.boolean().optional(),
+  drugTestConsentSignature: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
+  drugTestQuestion: Yup.string().optional(),
+  generalConsentSignatureConsent: Yup.boolean().optional(),
+  generalConsentSignature: Yup.object()
+    .shape({
+      uploaded: Yup.boolean().optional(),
+    })
+    .optional(),
 });
 
 export type DriverFormSchema = typeof completeFormSchema;

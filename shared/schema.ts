@@ -1,5 +1,31 @@
 import { z } from "zod";
 
+// Reusable phone validation patterns
+const PHONE_REGEX =
+  /^[\+]?1?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/;
+const PHONE_ERROR_MESSAGE =
+  "Phone number must be a valid US number (e.g., 123-456-7890, (123) 456-7890, +1-123-456-7890)";
+
+// Utility function to strip phone formatting
+const stripPhoneFormatting = (val: string | undefined): string | undefined => {
+  return val ? val.replace(/[^\d+]/g, "") : val;
+};
+
+// Reusable phone validation schemas
+const phoneSchema = z
+  .string()
+  .min(1, "Phone number is required")
+  .regex(PHONE_REGEX, PHONE_ERROR_MESSAGE)
+  .transform(stripPhoneFormatting);
+
+const optionalPhoneSchema = z
+  .string()
+  .optional()
+  .refine((val) => !val || PHONE_REGEX.test(val), {
+    message: PHONE_ERROR_MESSAGE,
+  })
+  .transform(stripPhoneFormatting);
+
 // TypeScript interfaces for database types
 export interface Company {
   id: string; // Changed from number to string (UUID)
@@ -122,6 +148,7 @@ export interface Driver {
   dob: string;
   phone: string;
   email: string;
+  social_security_number: string;
   current_address: string;
   current_city: string;
   current_state: string;
@@ -163,7 +190,10 @@ export const addressSchema = z.object({
 export const jobSchema = z.object({
   employerName: z.string().min(1, "Employer Name is required"),
   positionHeld: z.string().min(1, "Position Held is required"),
+  businessName: z.string().min(1, "Business Name is required"),
   companyEmail: z.string().email().optional(),
+  companyPhone: optionalPhoneSchema,
+  reasonForLeaving: z.string().optional(),
   fromMonth: z.number().min(1).max(12),
   fromYear: z.number().min(1900),
   toMonth: z.number().min(1).max(12),
@@ -236,7 +266,9 @@ export const insertDriverApplicationSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   dob: z.string().min(1, "Date of birth is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  social_security_number: z.string().default("000-00-0000"),
+  position_applied_for: z.string().min(1, "Position applied for is required"),
+  phone: phoneSchema,
   email: z.string().email("Valid email is required"),
   current_address: z.string().min(1, "Current address is required"),
   current_city: z.string().min(1, "Current city is required"),
@@ -248,10 +280,11 @@ export const insertDriverApplicationSchema = z.object({
   license_state: z.string().min(1, "License state is required"),
   license_expiration_date: z.string().optional(),
   medical_card_expiration_date: z.string().optional(),
-  position_applied_for: z.string().min(1, "Position applied for is required"),
+  // Document photo fields
+  license_photo: documentPhotoDataSchema.optional(),
+  medical_card_photo: documentPhotoDataSchema.optional(),
   addresses: z.array(addressSchema),
   jobs: z.array(jobSchema).min(1, "At least one job is required"),
-  social_security_number: z.string().default("000-00-0000"),
   // Consent fields
   fair_credit_reporting_act_consent: z.boolean().optional(),
   fmcsa_clearinghouse_consent: z.boolean().optional(),
@@ -268,9 +301,6 @@ export const insertDriverApplicationSchema = z.object({
   motor_vehicle_record_consent_signature: signatureDataSchema.optional(),
   drug_test_consent_signature: signatureDataSchema.optional(),
   general_consent_signature: signatureDataSchema.optional(),
-  // Document photo fields
-  license_photo: documentPhotoDataSchema.optional(),
-  medical_card_photo: documentPhotoDataSchema.optional(),
 });
 
 // Zod schema for saving draft (allows partial data)
@@ -279,7 +309,7 @@ export const saveDraftSchema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   dob: z.string().optional(),
-  phone: z.string().optional(),
+  phone: optionalPhoneSchema,
   email: z.string().email("Valid email is required"),
   current_address: z.string().optional(),
   current_city: z.string().optional(),
@@ -331,7 +361,7 @@ export const createDriverSchema = z.object({
     .enum(["active", "out_of_duty", "no_longer_employed"])
     .default("active"),
   dob: z.string().min(1, "Date of birth is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  phone: phoneSchema,
   email: z.string().email("Valid email is required"),
   current_address: z.string().min(1, "Current address is required"),
   current_city: z.string().min(1, "Current city is required"),
@@ -349,7 +379,7 @@ export const createDriverSchema = z.object({
   hire_date: z.string().min(1, "Hire date is required"),
   termination_date: z.string().optional(),
   emergency_contact_name: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
+  emergency_contact_phone: optionalPhoneSchema,
   emergency_contact_relationship: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -359,7 +389,7 @@ export const updateDriverSchema = z.object({
   first_name: z.string().min(1, "First name is required").optional(),
   last_name: z.string().min(1, "Last name is required").optional(),
   status: z.enum(["active", "out_of_duty", "no_longer_employed"]).optional(),
-  phone: z.string().min(1, "Phone number is required").optional(),
+  phone: phoneSchema.optional(),
   email: z.string().email("Valid email is required").optional(),
   current_address: z.string().min(1, "Current address is required").optional(),
   current_city: z.string().min(1, "Current city is required").optional(),
@@ -376,7 +406,7 @@ export const updateDriverSchema = z.object({
   medical_card_photo: documentPhotoDataSchema.optional(),
   termination_date: z.string().optional(),
   emergency_contact_name: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
+  emergency_contact_phone: optionalPhoneSchema,
   emergency_contact_relationship: z.string().optional(),
   notes: z.string().optional(),
 });

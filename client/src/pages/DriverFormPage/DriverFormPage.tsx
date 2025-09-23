@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -26,16 +26,6 @@ export function DriverFormPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { company } = useCompanyContext();
-  const [unemploymentPeriods, setUnemploymentPeriods] = useState<GapPeriod[]>(
-    []
-  );
-  const [residencyPeriods, setResidencyPeriods] = useState<GapPeriod[]>([]);
-
-  // Ref to track if draft has been loaded to prevent infinite loops
-  const draftLoadedRef = useRef(false);
-
-  const companyName = company?.name;
-
   const {
     currentStep,
     needsAdditionalAddresses,
@@ -65,68 +55,138 @@ export function DriverFormPage() {
     resumeToken,
     convertDraftToFormValues,
     draftData,
+    retryCount,
+    maxRetries,
+    cleanupUrl,
   } = useDraft();
 
-  const driverName = `${form.watch("firstName")} ${form.watch("lastName")}`;
+  // Ref to track if draft has been loaded to prevent infinite loops
+  const draftLoadedRef = useRef(false);
+  const previousStepRef = useRef(currentStep);
+  const retryAttemptedRef = useRef(false);
 
-  // Function to scroll to top of page
-  const scrollToTop = () => {
-    window.scrollTo({ top: 300, behavior: "smooth" });
-  };
+  // Gaps detection
+  const [unemploymentPeriods, setUnemploymentPeriods] = useState<GapPeriod[]>(
+    []
+  );
+  const [residencyPeriods, setResidencyPeriods] = useState<GapPeriod[]>([]);
+
+  const companyName = useMemo(() => company?.name, [company?.name]);
+  // Get form values once to avoid re-renders from form.watch
+  const firstName = form.watch("firstName");
+  const lastName = form.watch("lastName");
+  const driverName = useMemo(
+    () => `${firstName} ${lastName}`,
+    [firstName, lastName]
+  );
 
   // Handle draft resume from URL token
-  useEffect(() => {
-    if (resumeToken && !isResumingDraft && !draftData) {
-      // Reset the draft loaded flag when starting a new resume
-      draftLoadedRef.current = false;
-      resumeDraft(resumeToken);
+  const handleDraftResume = useCallback(async () => {
+    if (
+      !resumeToken ||
+      isResumingDraft ||
+      draftData ||
+      retryAttemptedRef.current
+    ) {
+      return;
     }
-  }, [resumeToken, isResumingDraft, draftData, resumeDraft]);
+
+    if (retryCount >= maxRetries) {
+      toast({
+        title: "Draft Link Expired",
+        description:
+          "This draft link has expired or is invalid. Please start a new application.",
+        variant: "destructive",
+      });
+      cleanupUrl();
+      retryAttemptedRef.current = true;
+      return;
+    }
+
+    // Mark that we've attempted a retry
+    retryAttemptedRef.current = true;
+
+    // Reset the draft loaded flag when starting a new resume
+    draftLoadedRef.current = false;
+    resumeDraft(resumeToken);
+    cleanupUrl();
+  }, [
+    resumeToken,
+    isResumingDraft,
+    draftData,
+    retryCount,
+    maxRetries,
+    resumeDraft,
+    toast,
+    cleanupUrl,
+  ]);
 
   // Load draft data into form when available
-  useEffect(() => {
-    if (draftData && !draftLoadedRef.current) {
-      const formValues = convertDraftToFormValues(draftData);
-
-      // Reset form with draft data
-      Object.entries(formValues).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          form.setValue(key as any, value);
-        }
-      });
-
-      // Reset steps to beginning
-      resetSteps();
-
-      // Mark draft as loaded to prevent infinite loops
-      draftLoadedRef.current = true;
-
-      toast({
-        title: "Draft Loaded",
-        description: "Your saved draft has been loaded successfully.",
-      });
+  const handleDraftDataLoad = useCallback(() => {
+    if (!draftData || draftLoadedRef.current) {
+      return;
     }
-  }, [draftData, convertDraftToFormValues, form, resetSteps, toast]);
 
-  // Cleanup effect to reset draft loaded flag on unmount
-  useEffect(() => {
-    return () => {
-      draftLoadedRef.current = false;
-    };
-  }, []);
+    const formValues = convertDraftToFormValues(draftData);
+
+    // Reset form with draft data
+    Object.entries(formValues).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        form.setValue(key as any, value);
+      }
+    });
+
+    // Reset steps to beginning
+    resetSteps();
+
+    // Mark draft as loaded to prevent infinite loops
+    draftLoadedRef.current = true;
+
+    // Remove the resume token from URL after successful load
+    cleanupUrl();
+
+    toast({
+      title: "Draft Loaded",
+      description: "Your saved draft has been loaded successfully.",
+    });
+  }, [
+    draftData,
+    convertDraftToFormValues,
+    form,
+    resetSteps,
+    cleanupUrl,
+    toast,
+  ]);
 
   // Scroll to top when step changes
-  useEffect(() => {
-    // Small delay to ensure content has rendered
-    const timer = setTimeout(() => {
-      scrollToTop();
-    }, 100);
+  const handleStepChange = useCallback(() => {
+    if (previousStepRef.current !== currentStep) {
+      previousStepRef.current = currentStep;
 
-    return () => clearTimeout(timer);
+      // Small delay to ensure content has rendered
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 300, behavior: "smooth" });
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
   }, [currentStep]);
 
-  const onNext = async () => {
+  // Separate effects to prevent cascading re-renders
+  useEffect(() => {
+    handleDraftResume();
+  }, [handleDraftResume]);
 
+  useEffect(() => {
+    handleDraftDataLoad();
+  }, [handleDraftDataLoad]);
+
+  useEffect(() => {
+    const cleanup = handleStepChange();
+    return cleanup;
+  }, [handleStepChange]);
+
+  const onNext = useCallback(async () => {
     const valid = await validateCurrentStep();
 
     if (valid) {
@@ -170,9 +230,22 @@ export function DriverFormPage() {
       }
       goToNextStep();
     }
-  };
+  }, [
+    validateCurrentStep,
+    currentStep,
+    checkResidencyRequirements,
+    form,
+    setNeedsAdditionalAddresses,
+    goToNextStep,
+    needsAdditionalAddresses,
+    residencyGapDetected,
+    checkForEmploymentGaps,
+    setGapDetected,
+    submitForm,
+    navigate,
+  ]);
 
-  const onBack = () => {
+  const onBack = useCallback(() => {
     if (currentStep === 4 && !needsAdditionalAddresses) {
       // Skip back to license info (step 2) if address history was skipped
       goToPreviousStep();
@@ -180,31 +253,34 @@ export function DriverFormPage() {
     } else {
       goToPreviousStep();
     }
-  };
+  }, [currentStep, needsAdditionalAddresses, goToPreviousStep]);
 
-  const handleAcknowledgeResidencyGaps = () => {
+  const handleAcknowledgeResidencyGaps = useCallback(() => {
     setResidencyGapDetected(false);
     goToNextStep();
-  };
+  }, [setResidencyGapDetected, goToNextStep]);
 
-  const handleAcknowledgeEmploymentGaps = () => {
+  const handleAcknowledgeEmploymentGaps = useCallback(() => {
     setGapDetected(false);
     goToNextStep();
-  };
+  }, [setGapDetected, goToNextStep]);
 
-  const handleLoadTestData = (type: "full" | "minimal" | "gaps") => {
-    loadTestData(form, type);
-    resetSteps();
-    if (type === "full" || type === "gaps") {
-      setNeedsAdditionalAddresses(true);
-    }
-    toast({
-      title: "Test Data Loaded",
-      description: `${type} test data has been loaded into the form.`,
-    });
-  };
+  const handleLoadTestData = useCallback(
+    (type: "full" | "minimal" | "gaps") => {
+      loadTestData(form, type);
+      resetSteps();
+      if (type === "full" || type === "gaps") {
+        setNeedsAdditionalAddresses(true);
+      }
+      toast({
+        title: "Test Data Loaded",
+        description: `${type} test data has been loaded into the form.`,
+      });
+    },
+    [form, resetSteps, setNeedsAdditionalAddresses, toast]
+  );
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = useCallback(() => {
     const formValues = form.getValues();
 
     // Only save if we have at least an email
@@ -217,25 +293,25 @@ export function DriverFormPage() {
       return;
     }
     saveDraft(formValues);
-  };
+  }, [form, toast, saveDraft]);
 
-  const handleResidencyGapDetectionChange = (
-    gapDetected: boolean,
-    periods: GapPeriod[]
-  ) => {
-    setResidencyGapDetected(gapDetected);
-    setResidencyPeriods(periods);
-  };
+  const handleResidencyGapDetectionChange = useCallback(
+    (gapDetected: boolean, periods: GapPeriod[]) => {
+      setResidencyGapDetected(gapDetected);
+      setResidencyPeriods(periods);
+    },
+    [setResidencyGapDetected]
+  );
 
-  const handleEmploymentGapDetectionChange = (
-    gapDetected: boolean,
-    periods: GapPeriod[]
-  ) => {
-    setGapDetected(gapDetected);
-    setUnemploymentPeriods(periods);
-  };
+  const handleEmploymentGapDetectionChange = useCallback(
+    (gapDetected: boolean, periods: GapPeriod[]) => {
+      setGapDetected(gapDetected);
+      setUnemploymentPeriods(periods);
+    },
+    [setGapDetected]
+  );
 
-  const renderCurrentStep = () => {
+  const currentStepComponent = useMemo(() => {
     switch (currentStep) {
       case 0:
         return <PersonalInfoStep control={form.control as any} />;
@@ -288,7 +364,21 @@ export function DriverFormPage() {
       default:
         return null;
     }
-  };
+  }, [
+    currentStep,
+    form.control,
+    needsAdditionalAddresses,
+    residencyGapDetected,
+    residencyPeriods,
+    handleAcknowledgeResidencyGaps,
+    handleResidencyGapDetectionChange,
+    gapDetected,
+    unemploymentPeriods,
+    handleAcknowledgeEmploymentGaps,
+    handleEmploymentGapDetectionChange,
+    companyName,
+    driverName,
+  ]);
 
   // Show loading state while resuming draft
   if (isResumingDraft) {
@@ -347,7 +437,7 @@ export function DriverFormPage() {
           )}
 
           {/* Step Content */}
-          {renderCurrentStep()}
+          {currentStepComponent}
 
           {/* Navigation */}
           <FormNavigation

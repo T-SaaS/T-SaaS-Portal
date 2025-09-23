@@ -72,12 +72,14 @@ export function EmploymentHistoryStep({
             appendJob({
               employerName: "",
               positionHeld: "",
+              businessName: "",
               fromMonth: 1,
               fromYear: new Date().getFullYear(),
               toMonth: 12,
               toYear: new Date().getFullYear(),
-              businessName: "",
               companyEmail: "",
+              companyPhone: "",
+              reasonForLeaving: "",
             })
           }
           className="bg-blue-500 hover:bg-blue-600"
@@ -111,7 +113,7 @@ export function EmploymentHistoryStep({
         <Card key={item.id} className="border border-slate-200 bg-slate-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-slate-900">Job {index + 1}</h4>
+              <h4 className="font-medium text-slate-900">Employment Details {index + 1}</h4>
               {jobFields.length > 1 && (
                 <Button
                   type="button"
@@ -135,7 +137,8 @@ export function EmploymentHistoryStep({
               toYearName={`jobs.${index}.toYear`}
               businessName={`jobs.${index}.businessName`}
               companyEmail={`jobs.${index}.companyEmail`}
-              label="Employment Details"
+              companyPhone={`jobs.${index}.companyPhone`}
+              reasonForLeaving={`jobs.${index}.reasonForLeaving`}
               required
             />
           </CardContent>
