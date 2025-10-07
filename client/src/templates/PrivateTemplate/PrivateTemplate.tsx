@@ -1,47 +1,12 @@
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@/atoms/Button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  LayoutDashboard,
-  FileText,
-  Users,
-  Settings,
-  LogOut,
-  User,
-  Menu,
-  X,
-  Building2,
-} from "lucide-react";
-import { NavigationItem } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
+import { Outlet, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useRouteTitle } from "@/routes";
-
-// Main navigation items for the sidebar
-const navigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Companies", href: "/companies", icon: Building2 },
-  { name: "Applications", href: "/applications", icon: FileText },
-  { name: "Drivers", href: "/drivers", icon: Users },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+import { DashboardHeader } from "./DashboardHeader";
+import { Sidebar } from "./Sidebar";
 
 export function PrivateTemplate() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
-  // Get the current page title from the routes configuration
-  const currentTitle = useRouteTitle(location.pathname);
 
   // Check if we're on mobile
   useEffect(() => {
@@ -62,93 +27,16 @@ export function PrivateTemplate() {
     }
   }, [location.pathname, isMobile]);
 
-  const handleLogout = async () => {
-    await signOut();
-  };
+  // Listen for sidebar toggle events from DashboardHeader
+  useEffect(() => {
+    const handleToggleSidebar = () => {
+      setSidebarOpen((prev) => !prev);
+    };
 
-  const SidebarContent = () => (
-    <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
-        <h1 className="text-xl font-bold text-slate-900">
-          Driver Qualification
-        </h1>
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-4 py-4">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <item.icon
-                className={`mr-3 h-5 w-5 ${
-                  isActive ? "text-blue-500" : "text-slate-400"
-                }`}
-              />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* User Menu */}
-      <div className="border-t border-slate-200 p-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start text-left">
-              <User className="mr-2 h-4 w-4" />
-              <span className="truncate">{user?.email || "User"}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {user?.email || "User"}
-                </p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.role || "User"}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
-              <User className="mr-2 h-4 w-4" />
-              <span onClick={() => navigate("/profile")}>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  );
+    window.addEventListener("toggleSidebar", handleToggleSidebar);
+    return () =>
+      window.removeEventListener("toggleSidebar", handleToggleSidebar);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -170,7 +58,7 @@ export function PrivateTemplate() {
             : "translate-x-0"
         }`}
       >
-        <SidebarContent />
+        <Sidebar isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main Content */}
@@ -180,25 +68,9 @@ export function PrivateTemplate() {
         }`}
       >
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-slate-200">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSidebarOpen(true)}
-                  className="md:hidden"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-              <h2 className="text-2xl font-bold text-slate-900">
-                {currentTitle || ""}
-              </h2>
-            </div>
-          </div>
-        </header>
+        <div className="sticky top-0 z-10">
+          <DashboardHeader />
+        </div>
 
         {/* Page Content */}
         <main className="p-6">
