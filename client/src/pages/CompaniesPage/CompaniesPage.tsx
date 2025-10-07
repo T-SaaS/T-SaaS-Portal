@@ -12,9 +12,8 @@ import { formatDate } from "@/utils/dateUtils";
 export function CompaniesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<{
-    domain?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    companyId?: string;
+    status?: string;
   }>({});
 
   // Fetch companies using REST API
@@ -37,49 +36,30 @@ export function CompaniesPage() {
 
   const companies: Company[] = companiesData?.map(transformCompany) || [];
 
-  // Extract available filter options from companies data
-  const availableOptions = useMemo(() => {
-    const domains = new Set<string>();
-
-    companies.forEach((company) => {
-      if (company.domain) domains.add(company.domain);
-    });
-
-    return {
-      domains: Array.from(domains).sort(),
-    };
-  }, [companies]);
-
   // Apply filters
-  const filteredCompanies = companies.filter((company) => {
-    // Apply search term filter
-    const searchMatch =
-      !searchTerm ||
-      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.domain &&
-        company.domain.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((company) => {
+      // Apply search term filter
+      const searchMatch =
+        !searchTerm ||
+        company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (company.domain &&
+          company.domain.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    if (!searchMatch) return false;
+      if (!searchMatch) return false;
 
-    // Apply domain filter
-    if (filters.domain && company.domain !== filters.domain) {
-      return false;
-    }
-
-    // Apply date range filter
-    if (filters.dateFrom || filters.dateTo) {
-      const createdDate = new Date(company.created_at);
-      if (filters.dateFrom && createdDate < new Date(filters.dateFrom)) {
+      // Apply company filter (for consistency with the interface, though it's redundant here)
+      if (filters.companyId && company.id !== filters.companyId) {
         return false;
       }
-      if (filters.dateTo && createdDate > new Date(filters.dateTo)) {
-        return false;
-      }
-    }
 
-    return true;
-  });
+      // Note: Status filter doesn't apply to companies, but we keep it for interface consistency
+      // In a real scenario, you might want to filter companies by some status field
+
+      return true;
+    });
+  }, [companies, searchTerm, filters]);
 
   const handleExport = (id: string) => {
     console.log("Export company:", id);
@@ -89,12 +69,6 @@ export function CompaniesPage() {
   const handleExportAll = () => {
     console.log("Export all companies");
     // Add your export all logic here
-  };
-
-  const removeFilter = (key: keyof typeof filters) => {
-    const newFilters = { ...filters };
-    delete newFilters[key];
-    setFilters(newFilters);
   };
 
   // Handle loading and error states
@@ -131,7 +105,11 @@ export function CompaniesPage() {
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             filters={filters}
             onFiltersChange={setFilters}
-            availableDomains={availableOptions.domains}
+            availableCompanies={companies.map((c) => ({
+              id: c.id,
+              name: c.name,
+            }))}
+            availableStatuses={[]} // Companies don't have statuses, but we need to provide empty array for interface
             searchPlaceholder="Search companies by name, slug, or domain..."
           />
         </CardContent>
@@ -143,28 +121,31 @@ export function CompaniesPage() {
           <CardContent className="pt-4">
             <div className="flex items-center flex-wrap gap-2 text-sm text-slate-600">
               <span>Active filters:</span>
-              {filters.domain && (
+              {filters.companyId && (
                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center gap-1">
-                  Domain: {filters.domain}
+                  Company:{" "}
+                  {companies.find((c) => c.id === filters.companyId)?.name ||
+                    filters.companyId}
                   <button
-                    onClick={() => removeFilter("domain")}
+                    onClick={() =>
+                      setFilters({ ...filters, companyId: undefined })
+                    }
                     className="ml-1 hover:bg-blue-200 rounded-full w-4 h-4 flex items-center justify-center text-blue-600 hover:text-blue-800"
-                    title="Remove domain filter"
+                    title="Remove company filter"
                   >
                     ×
                   </button>
                 </span>
               )}
-              {(filters.dateFrom || filters.dateTo) && (
+              {filters.status && (
                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center gap-1">
-                  Date: {filters.dateFrom || "Any"} - {filters.dateTo || "Any"}
+                  Status: {filters.status}
                   <button
-                    onClick={() => {
-                      removeFilter("dateFrom");
-                      removeFilter("dateTo");
-                    }}
+                    onClick={() =>
+                      setFilters({ ...filters, status: undefined })
+                    }
                     className="ml-1 hover:bg-blue-200 rounded-full w-4 h-4 flex items-center justify-center text-blue-600 hover:text-blue-800"
-                    title="Remove date filter"
+                    title="Remove status filter"
                   >
                     ×
                   </button>

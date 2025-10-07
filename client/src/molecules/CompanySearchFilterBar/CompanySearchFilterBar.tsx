@@ -18,12 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FilterDateRange } from "@/molecules/FilterDateRange";
 
 export interface CompanyFilters {
-  domain?: string;
-  dateFrom?: string;
-  dateTo?: string;
+  companyId?: string;
+  status?: string;
 }
 
 export interface CompanySearchFilterBarProps {
@@ -31,7 +29,8 @@ export interface CompanySearchFilterBarProps {
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   filters: CompanyFilters;
   onFiltersChange: (filters: CompanyFilters) => void;
-  availableDomains: string[];
+  availableCompanies: Array<{ id: string; name: string }>;
+  availableStatuses: string[];
   searchPlaceholder?: string;
 }
 
@@ -40,7 +39,8 @@ export function CompanySearchFilterBar({
   onSearchChange,
   filters,
   onFiltersChange,
-  availableDomains,
+  availableCompanies,
+  availableStatuses,
   searchPlaceholder = "Search companies...",
 }: CompanySearchFilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,17 +52,6 @@ export function CompanySearchFilterBar({
     onFiltersChange({
       ...filters,
       [key]: value === "all" ? undefined : value || undefined,
-    });
-  };
-
-  const handleDateRangeChange = (
-    from: string | undefined,
-    to: string | undefined
-  ) => {
-    onFiltersChange({
-      ...filters,
-      dateFrom: from,
-      dateTo: to,
     });
   };
 
@@ -99,26 +88,28 @@ export function CompanySearchFilterBar({
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Filter Companies</DialogTitle>
+            <DialogTitle>Filter Drivers</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="domain" className="text-right">
-                Domain
+              <Label htmlFor="company" className="text-right">
+                Company
               </Label>
               <div className="col-span-3">
                 <Select
-                  value={filters.domain || "all"}
-                  onValueChange={(value) => handleFilterChange("domain", value)}
+                  value={filters.companyId || "all"}
+                  onValueChange={(value) =>
+                    handleFilterChange("companyId", value)
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select domain" />
+                    <SelectValue placeholder="Select company" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Domains</SelectItem>
-                    {availableDomains.map((domain) => (
-                      <SelectItem key={domain} value={domain}>
-                        {domain}
+                    <SelectItem value="all">All Companies</SelectItem>
+                    {availableCompanies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -127,13 +118,26 @@ export function CompanySearchFilterBar({
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Date Range</Label>
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
               <div className="col-span-3">
-                <FilterDateRange
-                  fromDate={filters.dateFrom}
-                  toDate={filters.dateTo}
-                  onDateRangeChange={handleDateRangeChange}
-                />
+                <Select
+                  value={filters.status || "all"}
+                  onValueChange={(value) => handleFilterChange("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {availableStatuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
